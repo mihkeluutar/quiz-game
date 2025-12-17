@@ -4,6 +4,7 @@ node_modules/
 ### Build outputs
 dist/
 dist-ssr/
+build/
 
 ### Vite / misc caches
 .vite/
