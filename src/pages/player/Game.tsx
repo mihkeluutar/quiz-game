@@ -1,0 +1,581 @@
+
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { useQuizState } from '../../hooks/useQuizState';
+import { api } from '../../utils/api';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
+import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
+import { toast } from 'sonner@2.0.3';
+import { Loader2, Image as ImageIcon, Send, CheckCircle2, X } from 'lucide-react';
+import { Question } from '../../types/quiz';
+
+export const PlayerGame = () => {
+  const { code } = useParams<{ code: string }>();
+  // We need the token from localStorage
+  const token = localStorage.getItem('player_token') || '';
+  const { state, loading, error } = useQuizState(code || '', token);
+  
+  if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  if (error || !state) return <div className="p-8 text-center text-red-500">{error || 'Game not found'}</div>;
+
+  const { quiz, participants = [], blocks = [], currentBlock, currentQuestion, answers = [], guesses = [] } = state;
+  const me = participants?.find(p => p.player_token === token);
+
+  if (!me) return <div className="p-8">You are not part of this quiz. Please join again.</div>;
+
+  // --- 1. CREATION MODE ---
+  if (quiz.status === 'CREATION') {
+    const myBlock = blocks?.find(b => b.author_participant_id === me.id);
+    const myQuestions = (myBlock && state.questions && state.questions[myBlock.id]) || [];
+
+    return <PlayerCreation 
+      code={code!} 
+      participantId={me.id} 
+      existingBlock={myBlock}
+      existingQuestions={myQuestions}
+      maxQuestions={quiz.max_questions_per_player} 
+    />;
+  }
+
+  // --- 2. FINISHED MODE ---
+  if (quiz.status === 'FINISHED') {
+      return <PlayerFinished me={me} answers={answers} guesses={guesses} />;
+  }
+
+  // --- 3. PLAY MODE ---
+  
+  // Phase: AUTHOR_GUESS or AUTHOR_REVEAL
+  if ((quiz.phase === 'AUTHOR_GUESS' || quiz.phase === 'AUTHOR_REVEAL') && currentBlock) {
+      return (
+          <PlayerAuthorGuess 
+            code={code!} 
+            me={me} 
+            quiz={quiz} 
+            currentBlock={currentBlock} 
+            participants={participants} 
+            guesses={guesses} 
+          />
+      );
+  }
+
+  // Phase: QUESTION
+  if (quiz.phase === 'QUESTION') {
+      return (
+          <PlayerQuestion 
+            code={code!}
+            me={me}
+            currentBlock={currentBlock}
+            currentQuestion={currentQuestion}
+            answers={answers}
+          />
+      );
+  }
+
+  // Fallback state if game is playing but data is loading or out of sync
+  if (quiz.status === 'PLAY') {
+       return (
+          <div className="flex items-center justify-center h-screen p-6 text-center">
+              <div className="space-y-4">
+                  <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-500" />
+                  <h2 className="text-xl font-semibold">Loading current round...</h2>
+                  <p className="text-slate-500">Syncing with host...</p>
+              </div>
+          </div>
+      );
+  }
+
+  return (
+      <div className="flex items-center justify-center h-screen p-6 text-center">
+          <div className="space-y-4">
+              <Loader2 className="w-12 h-12 animate-spin mx-auto text-red-500" />
+              <h2 className="text-xl font-semibold">Waiting for host...</h2>
+              <p className="text-slate-500">Get ready for the next question!</p>
+          </div>
+      </div>
+  );
+};
+
+// --- Sub-components to fix Hook Rules ---
+
+const PlayerFinished = ({ me, answers, guesses }: any) => {
+    const myQPoints = (answers || []).filter((a: any) => a.participant_id === me.id && a.is_correct).length;
+    const myGPoints = (guesses || []).filter((g: any) => g.guesser_participant_id === me.id && g.is_correct).length;
+    const total = myQPoints + myGPoints;
+
+    return (
+        <div className="p-6 space-y-8 text-center">
+            <h1 className="text-3xl font-bold text-red-600">Quiz Finished!</h1>
+            <Card>
+                <CardHeader><CardTitle>Your Score</CardTitle></CardHeader>
+                <CardContent className="text-5xl font-bold text-green-600">{total}</CardContent>
+                <CardFooter className="flex justify-center text-sm text-slate-500">
+                    Questions: {myQPoints} | Guesses: {myGPoints}
+                </CardFooter>
+            </Card>
+            <p>Check the host screen for full leaderboard!</p>
+        </div>
+    );
+};
+
+const PlayerAuthorGuess = ({ code, me, quiz, currentBlock, participants, guesses }: any) => {
+    const myGuess = (guesses || []).find((g: any) => g.block_id === currentBlock.id && g.guesser_participant_id === me.id);
+    const realAuthor = (participants || []).find((p: any) => p.id === currentBlock.author_participant_id);
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleGuess = async (authorId: string) => {
+        if (myGuess || quiz.phase === 'AUTHOR_REVEAL' || submitting) return; 
+        setSubmitting(true);
+        try {
+            await api.submitGuess(code, me.id, currentBlock.id, authorId);
+            toast.success("Guess submitted!");
+        } catch (e: any) {
+            toast.error(e.message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="p-6 space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Who created the block "{currentBlock.title}"?</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                    {(participants || []).filter((p: any) => p.id !== me.id).map((p: any) => { 
+                        const isSelected = myGuess?.guessed_participant_id === p.id;
+                        // In Reveal phase, highlight correct one
+                        const isCorrect = quiz.phase === 'AUTHOR_REVEAL' && p.id === realAuthor?.id;
+                        const isWrong = quiz.phase === 'AUTHOR_REVEAL' && isSelected && !isCorrect;
+
+                        let btnClass = isSelected ? 'bg-blue-600 ring-2 ring-blue-300' : '';
+                        if (isCorrect) btnClass = 'bg-green-600 ring-2 ring-green-300 hover:bg-green-700';
+                        if (isWrong) btnClass = 'bg-red-600 ring-2 ring-red-300 hover:bg-red-700';
+
+                        return (
+                            <Button 
+                              key={p.id} 
+                              variant={isSelected || isCorrect || isWrong ? "default" : "outline"}
+                              className={`justify-start ${btnClass}`}
+                              onClick={() => handleGuess(p.id)}
+                              disabled={!!myGuess || quiz.phase === 'AUTHOR_REVEAL' || submitting}
+                            >
+                                {submitting && !myGuess && !isCorrect && !isWrong ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                {p.display_name}
+                                {isSelected && !isCorrect && !isWrong && <CheckCircle2 className="ml-auto w-4 h-4" />}
+                                {isCorrect && <CheckCircle2 className="ml-auto w-4 h-4 text-white" />}
+                                {isWrong && <X className="ml-auto w-4 h-4 text-white" />}
+                            </Button>
+                        );
+                    })}
+                    {(participants || []).length <= 1 && <p>No other players to guess!</p>}
+                </CardContent>
+                <CardFooter className="flex-col gap-2">
+                    {quiz.phase === 'AUTHOR_GUESS' && myGuess && <p className="text-sm text-slate-500 w-full text-center">Waiting for reveal...</p>}
+                    {quiz.phase === 'AUTHOR_REVEAL' && (
+                        <div className="text-center w-full space-y-2">
+                             <p className="text-lg font-bold">It was {realAuthor?.display_name}!</p>
+                             {myGuess?.is_correct ? (
+                                 <p className="text-green-600 font-bold">You guessed correctly! (+1 pt)</p>
+                             ) : (
+                                 <p className="text-red-500">Better luck next time.</p>
+                             )}
+                        </div>
+                    )}
+                </CardFooter>
+            </Card>
+        </div>
+    );
+};
+
+const PlayerQuestion = ({ code, me, currentBlock, currentQuestion, answers }: any) => {
+    // If we are in question phase but don't have the question data yet, show loading
+    if (!currentQuestion) {
+        return (
+          <div className="flex flex-col h-screen bg-slate-50">
+              <div className="p-4 bg-white border-b text-center">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Current Block</span>
+                  <h2 className="text-lg font-bold text-slate-800 animate-pulse bg-slate-200 h-6 w-1/2 mx-auto rounded"></h2>
+              </div>
+              <div className="flex-1 flex items-center justify-center p-6">
+                  <div className="text-center space-y-4">
+                      <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-500" />
+                      <h2 className="text-xl font-semibold">Loading Question...</h2>
+                  </div>
+              </div>
+          </div>
+        );
+    }
+
+    const myAnswer = (answers || []).find((a: any) => a.question_id === currentQuestion.id && a.participant_id === me.id);
+    const [submitting, setSubmitting] = useState(false);
+    
+    const handleSubmit = async (text: string) => {
+        if (myAnswer || submitting) return;
+        setSubmitting(true);
+        try {
+            await api.submitAnswer(code, me.id, currentQuestion.id, text);
+            toast.success("Answer submitted!");
+        } catch (e: any) {
+            toast.error(e.message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="flex flex-col h-screen bg-slate-50">
+            {/* Header showing Block Name */}
+            <div className="p-4 bg-white border-b shadow-sm sticky top-0 z-10 text-center">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Current Block</span>
+                <h2 className="text-lg font-bold text-slate-800">{currentBlock?.title || 'Quiz'}</h2>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-6 pb-20">
+                <Card className="overflow-hidden border-2 border-slate-200 shadow-sm">
+                    <CardContent className="p-0">
+                        {currentQuestion.image_url && (
+                            <div className="w-full bg-slate-100 border-b">
+                                <img 
+                                  src={currentQuestion.image_url} 
+                                  alt="Question Image" 
+                                  className="w-full max-h-[300px] object-contain mx-auto" 
+                                />
+                            </div>
+                        )}
+                        <div className="p-6">
+                            <h2 className="text-xl md:text-2xl font-bold text-center leading-tight">
+                                {currentQuestion.text}
+                            </h2>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Input Section */}
+                <div className="space-y-4 max-w-md mx-auto w-full">
+                    {myAnswer ? (
+                        <div className="text-center p-8 space-y-4 bg-green-50 rounded-xl border border-green-100 animate-in fade-in slide-in-from-bottom-4">
+                            <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+                            <h3 className="text-2xl font-bold text-green-700">Answer Locked In!</h3>
+                            <p className="text-slate-600">You're ready. Waiting for others...</p>
+                            <div className="font-medium bg-white p-3 rounded-lg border inline-block shadow-sm">
+                                You answered: <span className="text-blue-600 font-bold">{myAnswer.answer_text}</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {currentQuestion.type === 'mcq' && currentQuestion.options ? (
+                                <div className="grid gap-3">
+                                    {currentQuestion.options.map((opt: string, i: number) => (
+                                        <Button
+                                          key={i}
+                                          variant="outline"
+                                          className="w-full justify-start text-left h-auto py-4 px-6 text-lg border-2 hover:border-blue-300 hover:bg-blue-50 transition-all whitespace-normal"
+                                          onClick={() => handleSubmit(opt)}
+                                          disabled={submitting}
+                                        >
+                                          {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <div className="font-bold mr-3 text-slate-300">{String.fromCharCode(65 + i)}</div>}
+                                          {opt}
+                                        </Button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="space-y-4 bg-white p-4 rounded-xl border shadow-sm">
+                                    <Label htmlFor="answer-input" className="text-slate-500">Your Answer</Label>
+                                    <Input 
+                                       placeholder="Type your answer here..." 
+                                       disabled={submitting}
+                                       className="text-lg py-6"
+                                       onKeyDown={(e) => {
+                                           if (e.key === 'Enter') handleSubmit(e.currentTarget.value);
+                                       }}
+                                       id="open-answer-input"
+                                       autoFocus
+                                    />
+                                    <Button 
+                                      className="w-full text-lg py-6" 
+                                      size="lg"
+                                      disabled={submitting}
+                                      onClick={() => {
+                                          const el = document.getElementById('open-answer-input') as HTMLInputElement;
+                                          if (el && el.value.trim()) handleSubmit(el.value);
+                                      }}
+                                    >
+                                        {submitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Send className="ml-2 w-5 h-5" />}
+                                        {submitting ? 'Sending...' : 'Lock In Answer'}
+                                    </Button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Sub-component: PlayerCreation ---
+
+const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) { reject(new Error('No context')); return; }
+            
+            // Max dimensions
+            const MAX_WIDTH = 1024;
+            const MAX_HEIGHT = 1024;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                }
+            } else {
+                if (height > MAX_HEIGHT) {
+                    width *= MAX_HEIGHT / height;
+                    height = MAX_HEIGHT;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            canvas.toBlob((blob) => {
+                URL.revokeObjectURL(img.src); // Cleanup
+                if (!blob) { reject(new Error('Compression failed')); return; }
+                const newFile = new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() });
+                resolve(newFile);
+            }, 'image/jpeg', 0.7);
+        };
+        img.onerror = (err) => {
+            URL.revokeObjectURL(img.src); // Cleanup
+            reject(err);
+        };
+    });
+};
+
+const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions, maxQuestions }: any) => {
+    const [title, setTitle] = useState(existingBlock?.title || '');
+    const [saving, setSaving] = useState(false);
+    const [questions, setQuestions] = useState<Partial<Question>[]>(
+        existingQuestions.length > 0 
+        ? existingQuestions 
+        : Array(maxQuestions).fill({ type: 'open', text: '', options: ['', ''], correct_answer: '' })
+    );
+    const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+    const [joinedWithoutQuestions, setJoinedWithoutQuestions] = useState(false);
+
+    // If user has already saved a block, they are effectively "ready" but can edit.
+    // If they choose to join without questions, we show waiting screen.
+    if (joinedWithoutQuestions) {
+        return (
+            <div className="flex items-center justify-center h-screen p-6 text-center">
+                <div className="space-y-4">
+                    <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto" />
+                    <h2 className="text-xl font-semibold">You're in!</h2>
+                    <p className="text-slate-500">Sit back and relax while others finish their questions.</p>
+                    <Button variant="outline" onClick={() => setJoinedWithoutQuestions(false)}>
+                        Edit My Questions
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    const updateQuestion = (idx: number, field: string, value: any) => {
+        const newQs = [...questions];
+        newQs[idx] = { ...newQs[idx], [field]: value };
+        setQuestions(newQs);
+    };
+
+    const handleUpload = async (idx: number, file: File) => {
+        try {
+            setUploadingIdx(idx);
+            toast.info("Compressing & Uploading...");
+            
+            // Compress if image
+            let fileToUpload = file;
+            if (file.type.startsWith('image/')) {
+                try {
+                   fileToUpload = await compressImage(file);
+                } catch (ce) {
+                   console.warn("Compression failed, trying original", ce);
+                }
+            }
+
+            // Hard limit check (4.5MB safe limit for 5MB bucket)
+            if (fileToUpload.size > 4.5 * 1024 * 1024) {
+                 throw new Error(`File is too large (${(fileToUpload.size / 1024 / 1024).toFixed(1)}MB). Please use a smaller image.`);
+            }
+
+            const url = await api.uploadImage(fileToUpload);
+            updateQuestion(idx, 'image_url', url);
+            toast.success("Image uploaded!");
+        } catch (e: any) {
+            console.error("Upload error detail:", e);
+            let msg = e.message || "Unknown error";
+            // Handle if error is object
+            if (typeof e.message === 'object') msg = JSON.stringify(e.message);
+            
+            toast.error("Upload failed: " + msg);
+        } finally {
+            setUploadingIdx(null);
+        }
+    };
+
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            // Validate
+            if (!title) throw new Error("Block title is required");
+            for (const q of questions) {
+                if (!q.text) throw new Error("All questions must have text");
+                if (q.type === 'mcq' && (!q.options || q.options.length < 2)) throw new Error("MCQs need at least 2 options");
+                if (!q.correct_answer) throw new Error("All questions need a correct answer");
+            }
+
+            await api.saveBlock(code, participantId, title, questions);
+            toast.success("Block saved!");
+        } catch (e: any) {
+            toast.error(e.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="p-4 space-y-6 pb-20">
+            <div className="space-y-2">
+                <h1 className="text-2xl font-bold">Create Your Block</h1>
+                <p className="text-sm text-slate-500">Add {maxQuestions} questions for the quiz.</p>
+            </div>
+            
+            <div className="space-y-2">
+                <Label>Block Title</Label>
+                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. 80s Music" />
+            </div>
+
+            {questions.map((q: any, i: number) => (
+                <Card key={i}>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Question {i + 1}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <Input 
+                            value={q.text} 
+                            onChange={e => updateQuestion(i, 'text', e.target.value)} 
+                            placeholder="Question text..." 
+                        />
+                        
+                        <div className="space-y-2">
+                            {q.image_url ? (
+                                <div className="relative group rounded-lg border overflow-hidden w-full h-40 bg-slate-50">
+                                    <img src={q.image_url} alt="Preview" className="w-full h-full object-contain" />
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <Button variant="secondary" size="sm" className="pointer-events-auto relative">
+                                            Change
+                                            <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onChange={(e) => e.target.files?.[0] && handleUpload(i, e.target.files[0])} />
+                                        </Button>
+                                        <Button variant="destructive" size="sm" onClick={() => updateQuestion(i, 'image_url', '')}>Remove</Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <Label className={`cursor-pointer bg-slate-100 p-2 rounded hover:bg-slate-200 flex items-center gap-2 text-xs border ${uploadingIdx === i ? 'opacity-50 pointer-events-none' : ''}`}>
+                                        {uploadingIdx === i ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                                        {uploadingIdx === i ? 'Uploading...' : 'Add Image'}
+                                        <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleUpload(i, e.target.files[0])} />
+                                    </Label>
+                                </div>
+                            )}
+                        </div>
+
+                        <RadioGroup 
+                            value={q.type} 
+                            onValueChange={val => updateQuestion(i, 'type', val)} 
+                            className="flex gap-4"
+                        >
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="open" id={`q${i}-open`} />
+                                <Label htmlFor={`q${i}-open`}>Open Answer</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="mcq" id={`q${i}-mcq`} />
+                                <Label htmlFor={`q${i}-mcq`}>Multiple Choice</Label>
+                            </div>
+                        </RadioGroup>
+
+                        {q.type === 'mcq' && (
+                            <div className="space-y-2 pl-4 border-l-2 border-slate-100">
+                                <Label>Options</Label>
+                                {(q.options || ['', '']).map((opt: string, optIdx: number) => (
+                                    <div key={optIdx} className="flex gap-2">
+                                        <Input 
+                                            value={opt} 
+                                            onChange={e => {
+                                                const newOpts = [...(q.options || [])];
+                                                newOpts[optIdx] = e.target.value;
+                                                updateQuestion(i, 'options', newOpts);
+                                            }}
+                                            placeholder={`Option ${optIdx + 1}`}
+                                            className="h-8 text-sm"
+                                        />
+                                        <div className="flex items-center">
+                                            <input 
+                                                type="radio" 
+                                                name={`correct-${i}`}
+                                                checked={q.correct_answer === opt && opt !== ''}
+                                                onChange={() => updateQuestion(i, 'correct_answer', opt)}
+                                                className="w-4 h-4 text-green-600"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    onClick={() => updateQuestion(i, 'options', [...(q.options || []), ''])}
+                                >+ Add Option</Button>
+                            </div>
+                        )}
+
+                        {q.type === 'open' && (
+                             <div className="space-y-2">
+                                 <Label>Correct Answer (for host)</Label>
+                                 <Input 
+                                    value={q.correct_answer} 
+                                    onChange={e => updateQuestion(i, 'correct_answer', e.target.value)} 
+                                    placeholder="Expected answer..." 
+                                 />
+                             </div>
+                        )}
+                    </CardContent>
+                </Card>
+            ))}
+
+            <Button className="w-full" size="lg" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving...' : existingBlock ? 'Update Questions' : 'Save & Join'}
+            </Button>
+            
+            {!existingBlock && (
+                <div className="text-center pt-4 border-t">
+                    <p className="text-sm text-slate-500 mb-2">Don't want to make questions?</p>
+                    <Button variant="ghost" className="text-slate-500 hover:text-slate-800" onClick={() => setJoinedWithoutQuestions(true)}>
+                        Join as Player Only
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
+};
