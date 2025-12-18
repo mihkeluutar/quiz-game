@@ -107,6 +107,32 @@ app.post("/make-server-cbaebbc3/quiz/create", async (c) => {
   }
 });
 
+// 1b. List quizzes for a host (read-only, no schema changes)
+const listHostQuizzesHandler = async (c: any) => {
+  try {
+    const hostId = c.req.param("host_id");
+    if (!hostId) return c.json({ error: "host_id is required" }, 400);
+
+    // Quizzes are stored under keys like: quiz:{CODE}
+    const quizzes = await kv.getByPrefix("quiz:");
+    const hostQuizzes = (quizzes || [])
+      .filter((q: any) => q && typeof q === "object" && q.host_user_id === hostId && q.code)
+      .sort((a: any, b: any) => {
+        const at = new Date(a.created_at || 0).getTime();
+        const bt = new Date(b.created_at || 0).getTime();
+        return bt - at;
+      });
+
+    return c.json({ quizzes: hostQuizzes });
+  } catch (e: any) {
+    return c.json({ error: e.message }, 500);
+  }
+};
+
+// Register both variants to avoid path mismatches.
+app.get("/make-server-cbaebbc3/quiz/host/:host_id", listHostQuizzesHandler);
+app.get("/quiz/host/:host_id", listHostQuizzesHandler);
+
 // 2. Join Quiz
 app.post("/make-server-cbaebbc3/quiz/join", async (c) => {
   try {
@@ -288,14 +314,21 @@ app.post("/make-server-cbaebbc3/quiz/:code/action", async (c) => {
   if (action === 'START_GAME') {
     quiz.status = 'PLAY';
     quiz.phase = 'QUESTION';
-    // Shuffle blocks or use order?
-    // Let's just use array order for now, or random shuffle
-    // blocks.sort(() => Math.random() - 0.5);
-    // await kv.set(getBlocksKey(code), blocks);
+    // Optional shuffle controlled by host via payload.shuffleBlocks
+    const shouldShuffle = payload && payload.shuffleBlocks;
+    let orderedBlocks = blocks;
+    if (shouldShuffle && Array.isArray(blocks) && blocks.length > 1) {
+      orderedBlocks = [...blocks];
+      for (let i = orderedBlocks.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [orderedBlocks[i], orderedBlocks[j]] = [orderedBlocks[j], orderedBlocks[i]];
+      }
+      await kv.set(getBlocksKey(code), orderedBlocks);
+    }
     
-    if (blocks.length > 0) {
-        quiz.current_block_id = blocks[0].id;
-        const firstQs = questionsMap[blocks[0].id] || [];
+    if (orderedBlocks.length > 0) {
+        quiz.current_block_id = orderedBlocks[0].id;
+        const firstQs = questionsMap[orderedBlocks[0].id] || [];
         if (firstQs.length > 0) quiz.current_question_id = firstQs[0].id;
     }
   }

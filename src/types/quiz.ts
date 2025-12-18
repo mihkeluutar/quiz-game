@@ -7,7 +7,7 @@ export type User = {
 
 export type QuizStatus = 'CREATION' | 'PLAY' | 'FINISHED';
 
-export type QuizPhase = 'QUESTION' | 'AUTHOR_GUESS' | 'AUTHOR_REVEAL';
+export type QuizPhase = 'QUESTION' | 'AUTHOR_GUESS' | 'AUTHOR_REVEAL' | 'GRADING';
 
 export type Quiz = {
   id: string;

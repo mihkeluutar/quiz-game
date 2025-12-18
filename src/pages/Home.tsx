@@ -11,12 +11,19 @@ export const Home = () => {
           <p className="text-red-100/90 text-lg font-medium">Host or join a festive quiz!</p>
         </div>
         
-        <div className="flex flex-col gap-4 w-full max-w-[280px]">
+        <div className="flex flex-col gap-3 w-full max-w-[280px]">
           <Button asChild size="lg" className="w-full h-12 text-base font-semibold bg-white text-[#B91C1C] hover:bg-red-50 border-0 shadow-lg">
             <Link to="/join">Join Quiz</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="w-full h-12 text-base font-semibold bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white hover:border-white transition-all">
             <Link to="/host">Host Quiz</Link>
+          </Button>
+          <Button
+            asChild
+            size="lg"
+            className="w-full h-11 text-sm font-medium bg-black/30 hover:bg-black/50 text-white border border-white/30"
+          >
+            <Link to="/host/auth">Login as Host</Link>
           </Button>
         </div>
       </div>

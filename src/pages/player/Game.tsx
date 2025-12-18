@@ -144,8 +144,8 @@ const PlayerAuthorGuess = ({ code, me, quiz, currentBlock, participants, guesses
                 <CardHeader>
                     <CardTitle>Who created the block "{currentBlock.title}"?</CardTitle>
                 </CardHeader>
-                <CardContent className="grid gap-2">
-                    {(participants || []).filter((p: any) => p.id !== me.id).map((p: any) => { 
+            <CardContent className="grid gap-2">
+                    {(participants || []).map((p: any) => { 
                         const isSelected = myGuess?.guessed_participant_id === p.id;
                         // In Reveal phase, highlight correct one
                         const isCorrect = quiz.phase === 'AUTHOR_REVEAL' && p.id === realAuthor?.id;
@@ -171,7 +171,7 @@ const PlayerAuthorGuess = ({ code, me, quiz, currentBlock, participants, guesses
                             </Button>
                         );
                     })}
-                    {(participants || []).length <= 1 && <p>No other players to guess!</p>}
+                    {(participants || []).length === 0 && <p>No players to guess!</p>}
                 </CardContent>
                 <CardFooter className="flex-col gap-2">
                     {quiz.phase === 'AUTHOR_GUESS' && myGuess && <p className="text-sm text-slate-500 w-full text-center">Waiting for reveal...</p>}
@@ -212,6 +212,7 @@ const PlayerQuestion = ({ code, me, currentBlock, currentQuestion, answers }: an
 
     const myAnswer = (answers || []).find((a: any) => a.question_id === currentQuestion.id && a.participant_id === me.id);
     const [submitting, setSubmitting] = useState(false);
+    const [selectedOption, setSelectedOption] = useState<string | null>(null);
     
     const handleSubmit = async (text: string) => {
         if (myAnswer || submitting) return;
@@ -268,19 +269,51 @@ const PlayerQuestion = ({ code, me, currentBlock, currentQuestion, answers }: an
                     ) : (
                         <>
                             {currentQuestion.type === 'mcq' && currentQuestion.options ? (
-                                <div className="grid gap-3">
-                                    {currentQuestion.options.map((opt: string, i: number) => (
-                                        <Button
-                                          key={i}
-                                          variant="outline"
-                                          className="w-full justify-start text-left h-auto py-4 px-6 text-lg border-2 hover:border-blue-300 hover:bg-blue-50 transition-all whitespace-normal"
-                                          onClick={() => handleSubmit(opt)}
-                                          disabled={submitting}
-                                        >
-                                          {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <div className="font-bold mr-3 text-slate-300">{String.fromCharCode(65 + i)}</div>}
-                                          {opt}
-                                        </Button>
-                                    ))}
+                                <div className="space-y-4">
+                                    <div className="grid gap-3">
+                                        {currentQuestion.options.map((opt: string, i: number) => {
+                                            const isSelected = selectedOption === opt;
+                                            return (
+                                                <Button
+                                                  key={i}
+                                                  type="button"
+                                                  variant={isSelected ? "default" : "outline"}
+                                                  className={`w-full justify-start text-left h-auto py-4 px-6 text-lg border-2 transition-all whitespace-normal
+                                                    ${isSelected ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'hover:border-blue-300 hover:bg-blue-50'}`}
+                                                  onClick={() => setSelectedOption(opt)}
+                                                  disabled={submitting}
+                                                >
+                                                  <div className={`font-bold mr-3 ${isSelected ? 'text-white/80' : 'text-slate-300'}`}>
+                                                      {String.fromCharCode(65 + i)}
+                                                  </div>
+                                                  {opt}
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
+                                    <Button
+                                      className="w-full text-lg py-6"
+                                      size="lg"
+                                      type="button"
+                                      disabled={submitting || !selectedOption}
+                                      onClick={() => {
+                                          if (selectedOption) {
+                                              handleSubmit(selectedOption);
+                                          }
+                                      }}
+                                    >
+                                        {submitting ? (
+                                          <>
+                                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                            Sending...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Send className="mr-2 w-5 h-5" />
+                                            Lock In Answer
+                                          </>
+                                        )}
+                                    </Button>
                                 </div>
                             ) : (
                                 <div className="space-y-4 bg-white p-4 rounded-xl border shadow-sm">

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../comp
 import { Badge } from '../../components/ui/badge';
 import { Separator } from '../../components/ui/separator';
 import { toast } from 'sonner@2.0.3';
-import { Check, X, ArrowRight, ArrowLeft, Trophy, Users, Eye, Loader2 } from 'lucide-react';
+import { Check, X, ArrowRight, ArrowLeft, Trophy, Users, Eye, Loader2, Divide } from 'lucide-react';
 
 import {
   AlertDialog,
@@ -28,6 +28,8 @@ export const HostDashboard = () => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [showFinishConfirmation, setShowFinishConfirmation] = useState(false);
+  const [shuffleBlocksOnStart, setShuffleBlocksOnStart] = useState(true);
+  const [pendingGrades, setPendingGrades] = useState<Record<string, boolean>>({});
 
   // Reset revealed state when question changes
   useEffect(() => {
@@ -46,6 +48,25 @@ export const HostDashboard = () => {
       await refresh();
     } catch (err: any) {
       toast.error(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSubmitGrades = async () => {
+    const entries = Object.entries(pendingGrades) as [string, boolean][];
+    if (entries.length === 0) return;
+    setActionLoading(true);
+    try {
+      for (const [key, value] of entries) {
+        const [questionId, participantId] = key.split(':');
+        await api.gradeAnswer(code!, questionId, participantId, value);
+      }
+      setPendingGrades({});
+      await refresh();
+      toast.success('Grades submitted');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit grades');
     } finally {
       setActionLoading(false);
     }
@@ -79,6 +100,12 @@ export const HostDashboard = () => {
        const qs = questions[userBlock.id] || [];
        return qs.length >= quiz.max_questions_per_player; 
     }).length;
+
+    const totalQuestions = Object.values(questions).reduce(
+      (acc: number, qs: any) => acc + (Array.isArray(qs) ? qs.length : 0),
+      0
+    );
+    const hasAnyQuestions = totalQuestions > 0;
 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 space-y-12 animate-in fade-in duration-500">
@@ -135,12 +162,24 @@ export const HostDashboard = () => {
              </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-slate-100 flex justify-center">
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-slate-100 flex flex-col gap-3 items-center">
+            <div className="flex items-center gap-2 text-sm text-slate-500 w-full max-w-md">
+              <input
+                id="shuffle-blocks"
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                checked={shuffleBlocksOnStart}
+                onChange={(e) => setShuffleBlocksOnStart(e.target.checked)}
+              />
+              <label htmlFor="shuffle-blocks" className="cursor-pointer">
+                Shuffle block order when starting
+              </label>
+            </div>
             <Button 
               size="lg"
               className="w-full max-w-md h-14 text-lg shadow-xl shadow-blue-100 hover:shadow-blue-200 transition-all" 
-              onClick={() => handleAction('START_GAME')}
-              disabled={participants.length === 0 || actionLoading}
+              onClick={() => handleAction('START_GAME', { shuffleBlocks: shuffleBlocksOnStart })}
+              disabled={participants.length === 0 || !hasAnyQuestions || actionLoading}
             >
               {actionLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
               Lock Quiz & Start Playing
@@ -158,7 +197,7 @@ export const HostDashboard = () => {
         const myQuestionIds = new Set(myQuestions.map(q => q.id));
         
         // Total questions in game
-        const allQuestions = Object.values(questions).flat();
+        const allQuestions = (Object.values(questions) as any[][]).flat();
         // Questions this person could answer (exclude their own)
         const questionsToAnswerCount = allQuestions.filter(q => !myQuestionIds.has(q.id)).length;
         
@@ -402,7 +441,7 @@ export const HostDashboard = () => {
       }
   };
 
-  const goNext = () => {
+  const goNext = async () => {
        // Logic for NEXT button inside block
        if (quiz.phase === 'QUESTION') {
            if (currentQIdx < blockQs.length - 1) {
@@ -414,6 +453,11 @@ export const HostDashboard = () => {
        }
        if (quiz.phase === 'AUTHOR_GUESS') {
            setState({ phase: 'AUTHOR_REVEAL' });
+           return;
+       }
+       if (quiz.phase === 'GRADING') {
+           await handleSubmitGrades();
+           await handleAction('FINISH_GAME');
            return;
        }
        if (quiz.phase === 'AUTHOR_REVEAL') {
@@ -487,7 +531,8 @@ export const HostDashboard = () => {
           </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4 space-y-8 max-w-[1200px] mx-auto w-full pt-8">
+      <div className="flex-1 overflow-auto bg-slate-50">
+        <div className="p-4 space-y-8 max-w-[1200px] mx-auto w-full pt-8">
         {quiz.phase === 'QUESTION' && currentQuestion ? (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Question Card */}
@@ -522,22 +567,25 @@ export const HostDashboard = () => {
                 {/* Answers Section */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-center px-2">
-                        <h3 className="font-medium text-slate-500 flex items-center gap-2">
-                            <Users className="w-4 h-4" /> 
-                            <span>{answers.filter(a => a.question_id === currentQuestion.id).length}</span>
-                            <span className="text-slate-300">/</span>
-                            <span>{participants.length}</span>
-                            <span className="text-slate-400 text-sm ml-1">Answered</span>
-                        </h3>
-                        {!isRevealed && (
-                             <Button size="sm" onClick={() => setIsRevealed(true)} variant="outline" className="bg-white hover:bg-slate-50 text-slate-600 border-slate-200">
-                                 <Eye className="mr-2 w-4 h-4" /> Reveal Answers
-                             </Button>
-                        )}
+                        <div className="flex items-center gap-4">
+                          <h3 className="font-medium text-slate-500 flex items-center gap-2">
+                              <Users className="w-4 h-4" /> 
+                              <span>{answers.filter(a => a.question_id === currentQuestion.id).length}</span>
+                              <span className="text-slate-300">/</span>
+                              <span>{participants.length}</span>
+                              <span className="text-slate-400 text-sm ml-1">Answered</span>
+                          </h3>
+                          {!isRevealed && (
+                              <Button size="sm" onClick={() => setIsRevealed(true)} variant="outline" className="bg-white hover:bg-slate-50 text-slate-600 border-slate-200">
+                                  <Eye className="mr-2 w-4 h-4" /> Reveal Answers
+                              </Button>
+                          )}
+                        </div>
+                        <div />{/* spacer to keep layout symmetric */}
                     </div>
                     
                     {!isRevealed ? (
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 md:gap-4 gap-4">
                             {participants.map(p => {
                                 const hasAnswered = answers.some(a => a.question_id === currentQuestion!.id && a.participant_id === p.id);
                                 return (
@@ -601,6 +649,160 @@ export const HostDashboard = () => {
                     )}
                 </div>
             </div>
+        ) : quiz.phase === 'GRADING' ? (
+            <div className="space-y-6 max-w-[1200px] mx-auto w-full animate-in fade-in duration-500">
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-semibold text-slate-900">Grade open answers</h2>
+                    <p className="text-sm text-slate-500">
+                        Review free-text answers without seeing who wrote them. Select grades, then submit them all at once.
+                    </p>
+                </div>
+                {(() => {
+                    const openQuestionMap: Record<string, any> = {};
+                    Object.values(questions).forEach((qs: any) => {
+                        (qs || []).forEach((q: any) => {
+                            if (q.type === 'open') openQuestionMap[q.id] = q;
+                        });
+                    });
+                    const grouped: { question: any; answers: any[] }[] = [];
+                    const byQ: Record<string, any[]> = {};
+                    answers.forEach((ans: any) => {
+                        if (!openQuestionMap[ans.question_id]) return;
+                        if (!byQ[ans.question_id]) byQ[ans.question_id] = [];
+                        byQ[ans.question_id].push(ans);
+                    });
+                    Object.entries(byQ).forEach(([qid, list]) => {
+                        const q = openQuestionMap[qid];
+                        grouped.push({ question: q, answers: list as any[] });
+                    });
+                    const ungradedCount = grouped.reduce(
+                        (acc, g) => acc + g.answers.filter(a => a.is_correct === undefined || a.is_correct === null).length,
+                        0
+                    );
+                    if (grouped.length === 0) {
+                        return (
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-sm text-slate-500">
+                                No open-answer responses to grade.
+                            </div>
+                        );
+                    }
+                    return (
+                        <>
+                          <div className="text-sm text-slate-500">
+                              Ungraded responses: <span className="font-semibold text-slate-800">{ungradedCount}</span>
+                          </div>
+                          <div className="flex justify-end gap-2 text-xs">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={actionLoading || grouped.length === 0}
+                                onClick={() => {
+                                  const all: Record<string, boolean> = {};
+                                  grouped.forEach((group) => {
+                                    group.answers.forEach((ans) => {
+                                      const key = `${group.question.id}:${ans.participant_id}`;
+                                      all[key] = true;
+                                    });
+                                  });
+                                  setPendingGrades(prev => ({ ...prev, ...all }));
+                                }}
+                              >
+                                Mark all correct
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={actionLoading || grouped.length === 0}
+                                onClick={() => {
+                                  const all: Record<string, boolean> = {};
+                                  grouped.forEach((group) => {
+                                    group.answers.forEach((ans) => {
+                                      const key = `${group.question.id}:${ans.participant_id}`;
+                                      all[key] = false;
+                                    });
+                                  });
+                                  setPendingGrades(prev => ({ ...prev, ...all }));
+                                }}
+                              >
+                                Mark all wrong
+                              </Button>
+                          </div>
+                          <div className="space-y-6">
+                              {grouped.map((group, idx) => (
+                                  <Card key={group.question.id}>
+                                      <CardHeader className="space-y-2">
+                                          <CardTitle className="text-base text-slate-800 flex items-center gap-2">
+                                              <span className="inline-flex items-center justify-center rounded-full bg-slate-100 text-slate-700 text-xs px-2 py-0.5">
+                                                  Q{idx + 1}
+                                              </span>
+                                              {group.question.text}
+                                          </CardTitle>
+                                          <p className="text-xs text-slate-500">
+                                              Expected answer: <span className="font-semibold text-slate-800">{group.question.correct_answer}</span>
+                                          </p>
+                                      </CardHeader>
+                                      <CardContent className="space-y-3">
+                                          {group.answers.map((ans, aIdx) => {
+                                              const key = `${group.question.id}:${ans.participant_id}`;
+                                              const override = key in pendingGrades ? pendingGrades[key] : undefined;
+                                              const effective =
+                                                override !== undefined ? override : ans.is_correct;
+                                              const status =
+                                                effective === true ? 'Correct' :
+                                                effective === false ? 'Wrong' :
+                                                'Pending';
+                                              return (
+                                                  <div
+                                                    key={ans.id}
+                                                    className="border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-4 bg-white"
+                                                  >
+                                                      <div className="min-w-0">
+                                                          <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                                                              <span>Answer {aIdx + 1}</span>
+                                                              <span className={status === 'Correct' ? 'text-green-600 font-semibold' : status === 'Wrong' ? 'text-red-500 font-semibold' : 'text-slate-400'}>
+                                                                  {status}
+                                                              </span>
+                                                          </div>
+                                                          <div className="text-slate-700 text-sm font-medium break-words">
+                                                              {ans.answer_text}
+                                                          </div>
+                                                      </div>
+                                                      <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
+                                                          <Button 
+                                                            size="sm" 
+                                                            variant={effective === true ? "default" : "outline"}
+                                                            className={effective === true ? 'bg-green-600 hover:bg-green-700' : 'hover:bg-green-50 hover:text-green-700 hover:border-green-200'}
+                                                            onClick={() => {
+                                                              const key = `${group.question.id}:${ans.participant_id}`;
+                                                              setPendingGrades(prev => ({ ...prev, [key]: true }));
+                                                            }}
+                                                            disabled={actionLoading}
+                                                          >
+                                                              <Check className="w-4 h-4 mr-1" /> Correct
+                                                          </Button>
+                                                          <Button 
+                                                            size="sm" 
+                                                            variant={effective === false ? "destructive" : "outline"}
+                                                            onClick={() => {
+                                                              const key = `${group.question.id}:${ans.participant_id}`;
+                                                              setPendingGrades(prev => ({ ...prev, [key]: false }));
+                                                            }}
+                                                            disabled={actionLoading}
+                                                          >
+                                                              <X className="w-4 h-4 mr-1" /> Wrong
+                                                          </Button>
+                                                      </div>
+                                                  </div>
+                                              );
+                                          })}
+                                      </CardContent>
+                                  </Card>
+                              ))}
+                          </div>
+                        </>
+                    );
+                })()}
+            </div>
         ) : (quiz.phase === 'AUTHOR_GUESS' || quiz.phase === 'AUTHOR_REVEAL') && currentBlock ? (
             <div className="flex flex-col items-center justify-center min-h-[500px] space-y-12 animate-in fade-in duration-700">
                  <div className="text-center space-y-4 max-w-2xl">
@@ -630,19 +832,49 @@ export const HostDashboard = () => {
                             <h3 className="text-sm uppercase text-slate-500 font-bold text-center">Live Guesses</h3>
                         </div>
                         <div className="max-h-[300px] overflow-auto p-4 space-y-2">
-                            {guesses.filter(g => g.block_id === currentBlock.id).map(g => {
-                                const guesser = participants.find(p => p.id === g.guesser_participant_id);
-                                return (
-                                    <div key={g.id} className="text-sm flex justify-between items-center p-3 bg-slate-50 rounded-lg animate-in slide-in-from-left-2">
-                                        <span className="font-medium text-slate-700">{guesser?.display_name}</span>
-                                        <span className="text-slate-400 italic text-xs">has guessed</span>
-                                    </div>
-                                );
-                            })}
-                            {guesses.filter(g => g.block_id === currentBlock.id).length === 0 && (
+                            {(() => {
+                                const blockGuesses = guesses.filter(g => g.block_id === currentBlock.id);
+                                const guessedIds = new Set(blockGuesses.map(g => g.guesser_participant_id));
+
+                                const guessed = participants
+                                  .filter(p => guessedIds.has(p.id))
+                                  .sort((a, b) => {
+                                      const ia = blockGuesses.findIndex(g => g.guesser_participant_id === a.id);
+                                      const ib = blockGuesses.findIndex(g => g.guesser_participant_id === b.id);
+                                      return ia - ib;
+                                  });
+                                const notGuessed = participants.filter(p => !guessedIds.has(p.id));
+
+                                const ordered = [...guessed, ...notGuessed];
+
+                                return ordered.map(p => {
+                                    const hasGuessed = guessedIds.has(p.id);
+                                    return (
+                                        <div
+                                          key={p.id}
+                                          className={`text-sm flex justify-between items-center p-3 rounded-lg animate-in slide-in-from-left-2 border
+                                            ${
+                                              hasGuessed
+                                                ? 'bg-green-50 border-green-100'
+                                                : 'bg-slate-50 border-slate-200'
+                                            }`}
+                                        >
+                                            <span className="font-medium text-slate-700">{p.display_name}</span>
+                                            <span
+                                              className={`italic text-xs ${
+                                                hasGuessed ? 'text-green-700' : 'text-slate-400'
+                                              }`}
+                                            >
+                                                {hasGuessed ? 'has guessed' : 'has not guessed yet'}
+                                            </span>
+                                        </div>
+                                    );
+                                });
+                            })()}
+                            {participants.length === 0 && (
                                 <div className="text-slate-400 text-center text-sm italic py-8 flex flex-col items-center gap-2">
                                     <Loader2 className="w-4 h-4 animate-spin opacity-50" />
-                                    Waiting for guesses...
+                                    Waiting for players...
                                 </div>
                             )}
                         </div>
@@ -652,6 +884,7 @@ export const HostDashboard = () => {
         ) : (
             <div className="text-center p-8">Loading state...</div>
         )}
+        </div>
       </div>
 
       {/* Persistent Controls Footer */}
@@ -664,7 +897,7 @@ export const HostDashboard = () => {
                 onClick={goBack}
                 disabled={actionLoading || (currentBlockIdx === 0 && currentQIdx === 0 && quiz.phase === 'QUESTION')}
               >
-                  <ArrowLeft className="mr-2 w-5 h-5" /> Back
+                  <ArrowLeft className="mr-2 w-5 h-5" /> {quiz.phase === 'QUESTION' ? 'Previous Question' : 'Back'}
               </Button>
               
               <Button 
@@ -676,8 +909,9 @@ export const HostDashboard = () => {
               >
                   {actionLoading ? <Loader2 className="animate-spin mr-2" /> : null}
                   {quiz.phase === 'QUESTION' && currentQIdx < blockQs.length - 1 ? 'Next Question' : 
-                   quiz.phase === 'QUESTION' ? 'Finish Questions' :
+                   quiz.phase === 'QUESTION' ? 'Go to Next Block' :
                    quiz.phase === 'AUTHOR_GUESS' ? 'Reveal Author' :
+                   quiz.phase === 'GRADING' ? 'Show Results' :
                    currentBlockIdx === blocks.length - 1 ? 'Finish Quiz' : 'Next Block'}
                   <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
@@ -711,10 +945,13 @@ export const HostDashboard = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
-                onClick={() => handleAction('FINISH_GAME')}
-                className="bg-red-600 hover:bg-red-700"
+              onClick={async () => {
+                  setShowFinishConfirmation(false);
+                  await setState({ phase: 'GRADING', current_question_id: null, current_block_id: currentBlock?.id });
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
             >
-                End Quiz & Show Scores
+              Start Grading
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

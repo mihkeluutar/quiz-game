@@ -21,8 +21,14 @@ async function fetchAPI(endpoint: string, method: string, body?: any, token?: st
   });
 
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || 'API Error');
+    // Be defensive: non-JSON errors (like 404 HTML) otherwise crash parsing.
+    const text = await res.text();
+    try {
+      const err = JSON.parse(text);
+      throw new Error(err.error || `API Error (${res.status})`);
+    } catch {
+      throw new Error(`API Error (${res.status}): ${text.slice(0, 120)}`);
+    }
   }
   return res.json();
 }
@@ -30,6 +36,9 @@ async function fetchAPI(endpoint: string, method: string, body?: any, token?: st
 export const api = {
   createQuiz: (name: string, max_questions: number, host_id: string) => 
     fetchAPI('/quiz/create', 'POST', { name, max_questions, host_id }),
+
+  listHostQuizzes: (host_id: string) =>
+    fetchAPI(`/quiz/host/${encodeURIComponent(host_id)}`, 'GET'),
 
   joinQuiz: (code: string, display_name: string, player_token: string) =>
     fetchAPI('/quiz/join', 'POST', { code, display_name, player_token }),

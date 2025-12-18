@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { HostAuth } from './pages/host/Auth';
+import { HostHome } from './pages/host/Home';
 import { HostCreate } from './pages/host/Create';
 import { HostDashboard } from './pages/host/Dashboard';
 import { PlayerJoin } from './pages/player/Join';
@@ -18,7 +19,8 @@ export default function App() {
           
           {/* Host Routes */}
           <Route path="/host/auth" element={<HostAuth />} />
-          <Route path="/host" element={<HostCreate />} /> {/* Should check auth or redirect */}
+          <Route path="/host" element={<HostHome />} />
+          <Route path="/host/create" element={<HostCreate />} />
           <Route path="/host/:code" element={<HostDashboard />} />
           
           {/* Player Routes */}
