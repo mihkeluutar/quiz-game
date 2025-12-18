@@ -1188,8 +1188,8 @@
     }
   }
 
-  .bg-\[\#B91C1C\] {
-    background-color: #b91c1c;
+  .bg-accent {
+    background-color: var(--quizzard-brand);
   }
 
   .bg-background {
@@ -1617,8 +1617,8 @@
     white-space: nowrap;
   }
 
-  .text-\[\#B91C1C\] {
-    color: #b91c1c;
+  .text-accent {
+    color: #440a5f;
   }
 
   .text-blue-500 {
@@ -2685,6 +2685,7 @@
   --sidebar-accent-foreground: oklch(.205 0 0);
   --sidebar-border: oklch(.922 0 0);
   --sidebar-ring: oklch(.708 0 0);
+  --quizzard-brand: #440A5F;
 }
 
 .dark {
