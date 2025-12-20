@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
-// eslint-disable-next-line import/no-unresolved
+// @ts-ignore - Vite handles image imports
 import RizzardLogo from '../assets/rizzard-logo-purple.png';
 
 export const Home = () => {

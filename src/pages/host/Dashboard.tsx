@@ -1,14 +1,21 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuizState } from '../../hooks/useQuizState';
 import { api } from '../../utils/api';
 import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription} from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Separator } from '../../components/ui/separator';
-import { toast } from 'sonner@2.0.3';
-import { Check, X, ArrowRight, ArrowLeft, Trophy, Users, Eye, Loader2, Divide } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../../components/ui/accordion';
+import { toast } from 'sonner';
+import { Check, X, ArrowRight, ArrowLeft, Trophy, Users, Eye, Loader2 } from 'lucide-react';
 
 import {
   AlertDialog,
@@ -20,6 +27,90 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../../components/ui/alert-dialog";
+
+// Component to handle conditional text alignment and dynamic font sizing
+const QuestionTextDisplay = ({ text }: { text: string }) => {
+    const textRef = useRef<HTMLParagraphElement>(null);
+    const [isMultiLine, setIsMultiLine] = useState(false);
+
+    // Calculate font size based on text length
+    const fontSizeClass = useMemo(() => {
+        const length = text.length;
+        if (length <= 50) {
+            return 'text-4xl md:text-5xl'; // Very short - largest
+        } else if (length <= 100) {
+            return 'text-3xl md:text-4xl'; // Short - large
+        } else if (length <= 150) {
+            return 'text-2xl md:text-3xl'; // Medium - medium-large
+        } else {
+            return 'text-xl md:text-2xl'; // Long - smaller
+        }
+    }, [text]);
+
+    useEffect(() => {
+        const checkWrapping = () => {
+            if (!textRef.current) return;
+            
+            const element = textRef.current;
+            
+            // Create a temporary span to measure single-line width
+            const temp = document.createElement('span');
+            const computedStyle = window.getComputedStyle(element);
+            temp.style.visibility = 'hidden';
+            temp.style.position = 'absolute';
+            temp.style.whiteSpace = 'nowrap';
+            temp.style.fontSize = computedStyle.fontSize;
+            temp.style.fontWeight = computedStyle.fontWeight;
+            temp.style.fontFamily = computedStyle.fontFamily;
+            temp.style.letterSpacing = computedStyle.letterSpacing;
+            temp.textContent = text;
+            
+            document.body.appendChild(temp);
+            const singleLineWidth = temp.offsetWidth;
+            document.body.removeChild(temp);
+            
+            // Compare to actual element width
+            const elementWidth = element.offsetWidth;
+            
+            // If text width exceeds element width, it wraps (multi-line)
+            setIsMultiLine(singleLineWidth > elementWidth);
+        };
+
+        // Use ResizeObserver for reliable detection
+        let resizeObserver: ResizeObserver | null = null;
+        if (textRef.current && typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(checkWrapping);
+            resizeObserver.observe(textRef.current);
+        }
+        
+        // Initial checks with multiple timeouts to catch different render phases
+        const timeoutId1 = setTimeout(checkWrapping, 0);
+        const timeoutId2 = setTimeout(checkWrapping, 50);
+        const timeoutId3 = setTimeout(checkWrapping, 200);
+        
+        // Also check on window resize as fallback
+        window.addEventListener('resize', checkWrapping);
+        
+        return () => {
+            clearTimeout(timeoutId1);
+            clearTimeout(timeoutId2);
+            clearTimeout(timeoutId3);
+            if (resizeObserver && textRef.current) {
+                resizeObserver.unobserve(textRef.current);
+            }
+            window.removeEventListener('resize', checkWrapping);
+        };
+    }, [text]);
+
+    return (
+        <p 
+            ref={textRef}
+            className={`${fontSizeClass} font-light leading-tight text-slate-900 mb-8 ${isMultiLine ? 'text-left' : 'text-center'}`}
+        >
+            {text}
+        </p>
+    );
+};
 
 export const HostDashboard = () => {
   const { code } = useParams<{ code: string }>();
@@ -339,6 +430,201 @@ export const HostDashboard = () => {
              )}
         </div>
 
+        {/* Question-by-Question Results */}
+        <div className="space-y-6">
+            <div>
+                <h2 className="text-2xl font-semibold mb-1">Question Breakdown</h2>
+                <p className="text-sm text-muted-foreground">See how each participant answered every question</p>
+            </div>
+                    {blocks.map((block) => {
+                        const blockQuestions = questions[block.id] || [];
+                        if (blockQuestions.length === 0) return null;
+                        
+                        const blockAuthor = participants.find(p => p.id === block.author_participant_id);
+                        
+                        return (
+                            <Card key={block.id} className="overflow-hidden">
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <CardTitle>{block.title}</CardTitle>
+                                            <CardDescription>
+                                                Created by {blockAuthor?.display_name || 'Unknown'} • {blockQuestions.length} {blockQuestions.length === 1 ? 'question' : 'questions'}
+                                            </CardDescription>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <Accordion type="multiple" className="w-full">
+                                        {blockQuestions
+                                            .sort((a, b) => a.index_in_block - b.index_in_block)
+                                            .map((question) => {
+                                                const questionAnswers = answers.filter(a => a.question_id === question.id);
+                                                const correctAnswers = questionAnswers.filter(a => a.is_correct === true);
+                                                const wrongAnswers = questionAnswers.filter(a => a.is_correct === false);
+                                                
+                                                return (
+                                                    <AccordionItem key={question.id} value={question.id} className="data-[state=open]:border-2 data-[state=open]:border-slate-300 data-[state=open]:border-b-4 data-[state=open]:border-b-slate-400 data-[state=open]:rounded-lg data-[state=open]:p-1">
+                                                        <AccordionTrigger className="hover:no-underline items-center">
+                                                            <div className="flex items-center gap-3 text-left flex-1">
+                                                                <Badge variant="outline" className="w-8 h-8 rounded-full p-0 flex items-center justify-center">
+                                                                    {question.index_in_block + 1}
+                                                                </Badge>
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                                        <span className="font-semibold">{question.text}</span>
+                                                                        <Badge variant="secondary" className="text-xs">
+                                                                            {question.type === 'mcq' ? 'Multiple choice' : 'Open answer'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                                                        <span className="flex items-center gap-1">
+                                                                            <Check className="w-3 h-3 text-green-600" />
+                                                                            {correctAnswers.length} correct
+                                                                        </span>
+                                                                        <span className="flex items-center gap-1">
+                                                                            <X className="w-3 h-3 text-red-600" />
+                                                                            {wrongAnswers.length} wrong
+                                                                        </span>
+                                                                        <span>{questionAnswers.length}/{participants.length} answered</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </AccordionTrigger>
+                                                        <AccordionContent>
+                                                            <div className="space-y-4 pt-2">
+                                                                {question.type === 'mcq' && question.options && (
+                                                                    <div>
+                                                                        <div className="flex items-center justify-between mb-2">
+                                                                            <p className="text-xs font-medium text-muted-foreground">Options:</p>
+                                                                            {question.correct_answer && (() => {
+                                                                                const correctIdx = question.options.findIndex(opt => opt === question.correct_answer);
+                                                                                const correctLetter = correctIdx >= 0 ? String.fromCharCode(65 + correctIdx) : '';
+                                                                                return correctLetter ? (
+                                                                                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                                                                                        Correct: {correctLetter}
+                                                                                    </Badge>
+                                                                                ) : null;
+                                                                            })()}
+                                                                        </div>
+                                                                        <div className="space-y-2">
+                                                                            {question.options.map((opt, idx) => {
+                                                                                const isCorrect = opt === question.correct_answer;
+                                                                                return (
+                                                                                    <div 
+                                                                                        key={idx}
+                                                                                        className={`flex items-start gap-2 p-2 rounded-md border ${
+                                                                                            isCorrect 
+                                                                                                ? 'bg-green-50 border-green-200' 
+                                                                                                : 'bg-slate-50 border-slate-200'
+                                                                                        }`}
+                                                                                    >
+                                                                                        <span className={`font-semibold text-sm min-w-[24px] ${
+                                                                                            isCorrect ? 'text-green-700' : 'text-slate-600'
+                                                                                        }`}>
+                                                                                            {String.fromCharCode(65 + idx)}.
+                                                                                        </span>
+                                                                                        <span className={`text-sm flex-1 break-words ${
+                                                                                            isCorrect ? 'text-green-800 font-medium' : 'text-slate-700'
+                                                                                        }`}>
+                                                                                            {opt}
+                                                                                        </span>
+                                                                                        {isCorrect && (
+                                                                                            <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                                
+                                                                {question.type === 'open' && question.correct_answer && (
+                                                                    <div>
+                                                                        <p className="text-xs font-medium text-muted-foreground mb-2">Expected answer:</p>
+                                                                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-sm px-3 py-1.5">
+                                                                            {question.correct_answer}
+                                                                        </Badge>
+                                                                    </div>
+                                                                )}
+                                                                
+                                                                <Separator />
+                                                                
+                                                                <div>
+                                                                    <p className="text-xs font-medium text-muted-foreground mb-3">Participant Answers</p>
+                                                                    <Table>
+                                                                        <TableHeader>
+                                                                            <TableRow>
+                                                                                <TableHead className="max-w-[200px]">Participant</TableHead>
+                                                                                <TableHead>Answer</TableHead>
+                                                                                <TableHead className="w-[100px] text-right">Status</TableHead>
+                                                                            </TableRow>
+                                                                        </TableHeader>
+                                                                        <TableBody>
+                                                                            {participants.map((participant, idx) => {
+                                                                                const answer = questionAnswers.find(a => a.participant_id === participant.id);
+                                                                                const isAuthor = participant.id === block.author_participant_id;
+                                                                                const isCorrect = answer?.is_correct === true;
+                                                                                const isWrong = answer?.is_correct === false;
+                                                                                const isLast = idx === participants.length - 1;
+                                                                                
+                                                                                return (
+                                                                                    <TableRow key={participant.id} className={isLast ? "border-b-0" : ""}>
+                                                                                        <TableCell className="max-w-[200px]">
+                                                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                                                <span className="font-medium truncate">{participant.display_name}</span>
+                                                                                                {isAuthor && (
+                                                                                                    <Badge variant="outline" className="text-xs flex-shrink-0">Author</Badge>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </TableCell>
+                                                                                        <TableCell>
+                                                                                            {answer ? (
+                                                                                                <span className={isCorrect ? "text-green-700" : isWrong ? "text-red-700" : "text-muted-foreground"}>
+                                                                                                    {answer.answer_text}
+                                                                                                </span>
+                                                                                            ) : (
+                                                                                                <span className="text-muted-foreground italic text-sm">No answer</span>
+                                                                                            )}
+                                                                                        </TableCell>
+                                                                                        <TableCell className="text-right">
+                                                                                            {answer && (
+                                                                                                <Badge 
+                                                                                                    variant={isCorrect ? "default" : "destructive"}
+                                                                                                    className="gap-1"
+                                                                                                >
+                                                                                                    {isCorrect ? (
+                                                                                                        <>
+                                                                                                            <Check className="w-3 h-3" />
+                                                                                                            Correct
+                                                                                                        </>
+                                                                                                    ) : (
+                                                                                                        <>
+                                                                                                            <X className="w-3 h-3" />
+                                                                                                            Wrong
+                                                                                                        </>
+                                                                    )}
+                                                                                                </Badge>
+                                                                                            )}
+                                                                                        </TableCell>
+                                                                                    </TableRow>
+                                                                                );
+                                                                            })}
+                                                                        </TableBody>
+                                                                    </Table>
+                                                                </div>
+                                                            </div>
+                                                        </AccordionContent>
+                                                    </AccordionItem>
+                                                );
+                                            })}
+                                    </Accordion>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+        </div>
+
         {/* Actions */}
         <div className="flex gap-4 pt-8">
              <Button onClick={() => navigate('/host')} variant="outline" size="lg" className="flex-1 h-12 text-base">
@@ -538,21 +824,40 @@ export const HostDashboard = () => {
                 {/* Question Card */}
                 <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
                     <div className="bg-slate-50/50 border-b border-slate-100 p-6 flex justify-between items-center">
-                         <div className="flex items-center gap-3">
-                             <span className="bg-slate-200 text-slate-600 px-3 py-1 rounded-full text-sm font-bold">#{currentQIdx + 1}</span>
-                             <span className="text-slate-400 text-sm font-medium uppercase tracking-wider">Question</span>
+                         <div className="flex items-center gap-3 flex-1">
+                             <span className="text-slate-700 text-base font-semibold">
+                                 Question {currentQIdx + 1} of {currentBlock?.title || 'Block'}
+                             </span>
+                         </div>
+                         <div className="flex items-center gap-2 ml-4">
+                             <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={goBack}
+                                 disabled={actionLoading || (currentQIdx === 0)}
+                                 className="bg-white hover:bg-slate-50"
+                             >
+                                 <ArrowLeft className="w-4 h-4" />
+                             </Button>
+                             <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => goNext()}
+                                 disabled={actionLoading}
+                                 className="bg-white hover:bg-slate-50"
+                             >
+                                 <ArrowRight className="w-4 h-4" />
+                             </Button>
                          </div>
                          {isRevealed && (
-                             <Badge variant="secondary" className="text-base px-4 py-1 bg-green-100 text-green-700 hover:bg-green-100">
+                             <Badge variant="secondary" className="text-base px-4 py-1 bg-green-100 text-green-700 hover:bg-green-100 ml-4">
                                  Answer: {currentQuestion.type === 'mcq' ? currentQuestion.correct_answer : 'Open Answer'}
                              </Badge>
                          )}
                     </div>
                     
-                    <div className="p-8 md:p-12 text-center">
-                        <h2 className="text-3xl md:text-4xl font-light leading-tight text-slate-900 mb-8">
-                            {currentQuestion.text}
-                        </h2>
+                    <div className="p-6 text-center">
+                        <QuestionTextDisplay text={currentQuestion.text} />
                         
                         {currentQuestion.image_url && (
                             <div className="w-full flex justify-center mb-6">
@@ -675,10 +980,6 @@ export const HostDashboard = () => {
                         const q = openQuestionMap[qid];
                         grouped.push({ question: q, answers: list as any[] });
                     });
-                    const ungradedCount = grouped.reduce(
-                        (acc, g) => acc + g.answers.filter(a => a.is_correct === undefined || a.is_correct === null).length,
-                        0
-                    );
                     if (grouped.length === 0) {
                         return (
                             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-sm text-slate-500">
@@ -688,46 +989,7 @@ export const HostDashboard = () => {
                     }
                     return (
                         <>
-                          <div className="text-sm text-slate-500">
-                              Ungraded responses: <span className="font-semibold text-slate-800">{ungradedCount}</span>
-                          </div>
-                          <div className="flex justify-end gap-2 text-xs">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={actionLoading || grouped.length === 0}
-                                onClick={() => {
-                                  const all: Record<string, boolean> = {};
-                                  grouped.forEach((group) => {
-                                    group.answers.forEach((ans) => {
-                                      const key = `${group.question.id}:${ans.participant_id}`;
-                                      all[key] = true;
-                                    });
-                                  });
-                                  setPendingGrades(prev => ({ ...prev, ...all }));
-                                }}
-                              >
-                                Mark all correct
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={actionLoading || grouped.length === 0}
-                                onClick={() => {
-                                  const all: Record<string, boolean> = {};
-                                  grouped.forEach((group) => {
-                                    group.answers.forEach((ans) => {
-                                      const key = `${group.question.id}:${ans.participant_id}`;
-                                      all[key] = false;
-                                    });
-                                  });
-                                  setPendingGrades(prev => ({ ...prev, ...all }));
-                                }}
-                              >
-                                Mark all wrong
-                              </Button>
-                          </div>
-                          <div className="space-y-6">
+                          <div className="space-y-3">
                               {grouped.map((group, idx) => (
                                   <Card key={group.question.id}>
                                       <CardHeader className="space-y-2">
@@ -805,7 +1067,7 @@ export const HostDashboard = () => {
             </div>
         ) : (quiz.phase === 'AUTHOR_GUESS' || quiz.phase === 'AUTHOR_REVEAL') && currentBlock ? (
             <div className="flex flex-col items-center justify-center min-h-[500px] space-y-12 animate-in fade-in duration-700">
-                 <div className="text-center space-y-4 max-w-2xl">
+                 <div className="text-center space-y-4">
                     <span className="text-slate-400 uppercase tracking-widest font-semibold text-sm">Block Author Mystery</span>
                     <h2 className="text-5xl md:text-6xl font-black text-slate-800 tracking-tight leading-tight">
                         Who created <br/>
@@ -887,36 +1149,36 @@ export const HostDashboard = () => {
         </div>
       </div>
 
-      {/* Persistent Controls Footer */}
-      <div className="border-t bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
-          <div className="p-4 max-w-[1200px] mx-auto flex justify-between gap-4">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="flex-1" 
-                onClick={goBack}
-                disabled={actionLoading || (currentBlockIdx === 0 && currentQIdx === 0 && quiz.phase === 'QUESTION')}
-              >
-                  <ArrowLeft className="mr-2 w-5 h-5" /> {quiz.phase === 'QUESTION' ? 'Previous Question' : 'Back'}
-              </Button>
-              
-              <Button 
-                variant="default" 
-                size="lg" 
-                className="flex-[2] text-lg" 
-                onClick={goNext}
-                disabled={actionLoading}
-              >
-                  {actionLoading ? <Loader2 className="animate-spin mr-2" /> : null}
-                  {quiz.phase === 'QUESTION' && currentQIdx < blockQs.length - 1 ? 'Next Question' : 
-                   quiz.phase === 'QUESTION' ? 'Go to Next Block' :
-                   quiz.phase === 'AUTHOR_GUESS' ? 'Reveal Author' :
-                   quiz.phase === 'GRADING' ? 'Show Results' :
-                   currentBlockIdx === blocks.length - 1 ? 'Finish Quiz' : 'Next Block'}
-                  <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
+      {/* Persistent Controls Footer - Hidden during QUESTION phase */}
+      {quiz.phase !== 'QUESTION' && (
+          <div className="border-t bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
+              <div className="p-4 max-w-[1200px] mx-auto flex justify-between gap-4">
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="flex-1" 
+                    onClick={goBack}
+                    disabled={actionLoading}
+                  >
+                      <ArrowLeft className="mr-2 w-5 h-5" /> Back
+                  </Button>
+                  
+                  <Button 
+                    variant="default" 
+                    size="lg" 
+                    className="flex-[2] text-lg" 
+                    onClick={goNext}
+                    disabled={actionLoading}
+                  >
+                      {actionLoading ? <Loader2 className="animate-spin mr-2" /> : null}
+                      {quiz.phase === 'AUTHOR_GUESS' ? 'Reveal Author' :
+                       quiz.phase === 'GRADING' ? 'Show Results' :
+                       currentBlockIdx === blocks.length - 1 ? 'Finish Quiz' : 'Next Block'}
+                      <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+              </div>
           </div>
-      </div>
+      )}
       
       <AlertDialog open={showFinishConfirmation} onOpenChange={setShowFinishConfirmation}>
         <AlertDialogContent>

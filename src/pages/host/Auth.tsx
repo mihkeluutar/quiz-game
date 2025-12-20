@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabase/client';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Label } from '../../components/ui/label';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { useAuth } from '../../hooks/useAuth';
 
 export const HostAuth = () => {
@@ -73,12 +73,10 @@ export const HostAuth = () => {
                   <Label htmlFor="password">Password</Label>
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
-              </CardContent>
-              <CardFooter>
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? 'Logging in...' : 'Login'}
                 </Button>
-              </CardFooter>
+              </CardContent>
             </form>
           </Card>
         </TabsContent>
@@ -99,12 +97,10 @@ export const HostAuth = () => {
                   <Label htmlFor="signup-password">Password</Label>
                   <Input id="signup-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
-              </CardContent>
-              <CardFooter>
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? 'Creating account...' : 'Sign Up'}
                 </Button>
-              </CardFooter>
+              </CardContent>
             </form>
           </Card>
         </TabsContent>

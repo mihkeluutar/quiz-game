@@ -1,13 +1,25 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { toast } from 'sonner@2.0.3';
-import { Users, Play, ChevronRight, Trophy, Lock } from 'lucide-react';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { Badge } from '../../../components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
+import { Users, Play, ChevronRight, ChevronLeft, Trophy, Lock } from 'lucide-react';
 import { Quiz, QuizParticipant, Block, Question, Answer, BlockGuess } from '../../types/schema';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '../../../components/ui/accordion';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../../components/ui/select';
 
 export default function HostDashboard() {
   const { code } = useParams();
@@ -90,6 +102,48 @@ export default function HostDashboard() {
     // Refresh local
     const { data: updated } = await supabase.from('quizzes').select('*').eq('id', quiz.id).single();
     if (updated) setQuiz(updated);
+  };
+
+  const handlePrev = async () => {
+      // Logic for previous
+      if (!quiz.current_block_id) return;
+      
+      const currentBlock = blocks.find(b => b.id === quiz.current_block_id);
+      if (!currentBlock) return;
+
+      // Current Phase: Question or Guess?
+      if (quiz.current_question_id) {
+          // In Question Phase. Try to find previous question in this block.
+          const blockQs = questions
+            .filter(q => q.block_id === currentBlock.id)
+            .sort((a, b) => a.index_in_block - b.index_in_block);
+          
+          const currentIndex = blockQs.findIndex(q => q.id === quiz.current_question_id);
+          if (currentIndex > 0) {
+              // Previous Question
+              await supabase.from('quizzes').update({
+                  current_question_id: blockQs[currentIndex - 1].id
+              }).eq('id', quiz.id);
+          } else {
+              // First question - could go to previous block's last question or stay here
+              // For now, stay at first question (button will be disabled)
+              return;
+          }
+      } else {
+          // In Author Guess Phase. Go back to last question of current block.
+          const blockQs = questions
+            .filter(q => q.block_id === currentBlock.id)
+            .sort((a, b) => a.index_in_block - b.index_in_block);
+          
+          if (blockQs.length > 0) {
+              await supabase.from('quizzes').update({
+                  current_question_id: blockQs[blockQs.length - 1].id
+              }).eq('id', quiz.id);
+          }
+      }
+      
+      const { data: updated } = await supabase.from('quizzes').select('*').eq('id', quiz.id).single();
+      if (updated) setQuiz(updated);
   };
 
   const handleNext = async () => {
@@ -178,6 +232,7 @@ export default function HostDashboard() {
                 answers={answers}
                 guesses={guesses}
                 onNext={handleNext}
+                onPrev={handlePrev}
             />
         )}
 
@@ -226,12 +281,94 @@ function CreationView({ participants, blocks, questions, onStart }: any) {
     );
 }
 
-function PlayView({ quiz, participants, blocks, questions, answers, guesses, onNext }: any) {
+// Component to handle conditional text alignment based on wrapping
+const QuestionText = ({ text }: { text: string }) => {
+    const textRef = useRef<HTMLDivElement>(null);
+    const [isMultiLine, setIsMultiLine] = useState(false);
+
+    useEffect(() => {
+        const checkWrapping = () => {
+            if (!textRef.current) return;
+            
+            const element = textRef.current;
+            
+            // Create a temporary span to measure single-line width
+            const temp = document.createElement('span');
+            const computedStyle = window.getComputedStyle(element);
+            temp.style.visibility = 'hidden';
+            temp.style.position = 'absolute';
+            temp.style.whiteSpace = 'nowrap';
+            temp.style.fontSize = computedStyle.fontSize;
+            temp.style.fontWeight = computedStyle.fontWeight;
+            temp.style.fontFamily = computedStyle.fontFamily;
+            temp.style.letterSpacing = computedStyle.letterSpacing;
+            temp.textContent = text;
+            
+            document.body.appendChild(temp);
+            const singleLineWidth = temp.offsetWidth;
+            document.body.removeChild(temp);
+            
+            // Compare to actual element width
+            const elementWidth = element.offsetWidth;
+            
+            // If text width exceeds element width, it wraps (multi-line)
+            setIsMultiLine(singleLineWidth > elementWidth);
+        };
+
+        // Use ResizeObserver for reliable detection
+        let resizeObserver: ResizeObserver | null = null;
+        if (textRef.current && typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(checkWrapping);
+            resizeObserver.observe(textRef.current);
+        }
+        
+        // Initial checks with multiple timeouts to catch different render phases
+        const timeoutId1 = setTimeout(checkWrapping, 0);
+        const timeoutId2 = setTimeout(checkWrapping, 50);
+        const timeoutId3 = setTimeout(checkWrapping, 200);
+        
+        // Also check on window resize as fallback
+        window.addEventListener('resize', checkWrapping);
+        
+        return () => {
+            clearTimeout(timeoutId1);
+            clearTimeout(timeoutId2);
+            clearTimeout(timeoutId3);
+            if (resizeObserver && textRef.current) {
+                resizeObserver.unobserve(textRef.current);
+            }
+            window.removeEventListener('resize', checkWrapping);
+        };
+    }, [text]);
+
+    return (
+        <div 
+            ref={textRef}
+            className={`text-lg font-medium text-slate-900 mb-4 ${isMultiLine ? 'text-left' : 'text-center'}`}
+        >
+            {text}
+        </div>
+    );
+};
+
+function PlayView({ quiz, participants, blocks, questions, answers, guesses, onNext, onPrev }: any) {
     const currentBlock = blocks.find((b: any) => b.id === quiz.current_block_id);
     const currentQuestion = questions.find((q: any) => q.id === quiz.current_question_id);
     
     // Derived state
     const isAuthorGuessPhase = !currentQuestion && !!currentBlock;
+    
+    // Calculate question number within block
+    const blockQuestions = questions
+        .filter((q: any) => q.block_id === currentBlock?.id)
+        .sort((a: any, b: any) => a.index_in_block - b.index_in_block);
+    const questionNumber = currentQuestion 
+        ? blockQuestions.findIndex((q: any) => q.id === currentQuestion.id) + 1
+        : 0;
+    
+    // Check if prev/next buttons should be enabled
+    const canGoPrev = currentQuestion && questionNumber > 1;
+    const canGoNext = currentQuestion && questionNumber < blockQuestions.length;
     
     // Answers for current question
     const currentAnswers = currentQuestion 
@@ -246,15 +383,43 @@ function PlayView({ quiz, participants, blocks, questions, answers, guesses, onN
     return (
         <Card className="min-h-[500px] flex flex-col">
             <CardHeader className="border-b">
-                <CardTitle>
-                    {isAuthorGuessPhase 
-                        ? `Guess the Author: "${currentBlock?.title}"`
-                        : `Question: ${currentQuestion?.text || 'Loading...'}`
-                    }
-                </CardTitle>
-                <CardDescription>
-                    Block: {currentBlock?.title}
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                        {!isAuthorGuessPhase && currentQuestion && (
+                            <CardTitle className="text-lg font-semibold">
+                                Question {questionNumber} of {currentBlock?.title || 'Block'}
+                            </CardTitle>
+                        )}
+                        {isAuthorGuessPhase && (
+                            <CardTitle>
+                                Guess the Author: "{currentBlock?.title}"
+                            </CardTitle>
+                        )}
+                        {!isAuthorGuessPhase && !currentQuestion && (
+                            <CardTitle>Loading...</CardTitle>
+                        )}
+                    </div>
+                    {!isAuthorGuessPhase && currentQuestion && (
+                        <div className="flex items-center gap-2 ml-4">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onPrev}
+                                disabled={!canGoPrev}
+                            >
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onNext}
+                                disabled={!canGoNext}
+                            >
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </CardHeader>
             <CardContent className="flex-1 p-6">
                 {isAuthorGuessPhase ? (
@@ -269,6 +434,10 @@ function PlayView({ quiz, participants, blocks, questions, answers, guesses, onN
                     </div>
                 ) : (
                     <div className="space-y-6">
+                         {currentQuestion?.text && (
+                             <QuestionText text={currentQuestion.text} />
+                         )}
+                         
                          {currentQuestion?.image_url && (
                              <img src={currentQuestion.image_url} alt="Question" className="max-h-64 mx-auto rounded-lg object-contain" />
                          )}
@@ -304,45 +473,63 @@ function PlayView({ quiz, participants, blocks, questions, answers, guesses, onN
                     </div>
                 )}
             </CardContent>
-            <div className="p-4 border-t bg-slate-50 flex justify-end">
-                <Button size="lg" onClick={onNext}>
-                    Next Step <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-            </div>
+            {isAuthorGuessPhase && (
+                <div className="p-4 border-t bg-slate-50 flex justify-end">
+                    <Button size="lg" onClick={onNext}>
+                        Next Step <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </div>
+            )}
         </Card>
     );
 }
 
 function FinishedView({ participants, answers, guesses, questions, blocks }: any) {
+    const [selectedPlayerId, setSelectedPlayerId] = useState<string>('all');
+
     // Calculate scores
     const scores = useMemo(() => {
-        return participants.map((p: any) => {
-            // Question points
-            const correctAnswers = answers.filter((a: any) => 
-                a.participant_id === p.id && a.is_correct
-                // Note: For open answers, is_correct might be null unless host marked it.
-                // For MCQ, we auto-calc. 
-                // Simple logic: if type=mcq and text=correct, or if is_correct=true
-            ).length;
+        return participants
+            .map((p: any) => {
+                const correctAnswers = answers.filter(
+                    (a: any) => a.participant_id === p.id && a.is_correct
+                ).length;
 
-            // Guess points
-            const correctGuesses = guesses.filter((g: any) => 
-                g.guesser_participant_id === p.id && g.is_correct
-            ).length;
+                const correctGuesses = guesses.filter(
+                    (g: any) => g.guesser_participant_id === p.id && g.is_correct
+                ).length;
 
-            return {
-                ...p,
-                score: (correctAnswers * 10) + (correctGuesses * 5), // 10 pts per Q, 5 per guess
-                correctAnswers,
-                correctGuesses
-            };
-        }).sort((a: any, b: any) => b.score - a.score);
+                return {
+                    ...p,
+                    score: correctAnswers * 10 + correctGuesses * 5,
+                    correctAnswers,
+                    correctGuesses,
+                };
+            })
+            .sort((a: any, b: any) => b.score - a.score);
     }, [participants, answers, guesses]);
+
+    const blocksWithQuestions = useMemo(() => {
+        const byBlock: Record<string, Question[]> = {};
+        (questions || []).forEach((q: Question) => {
+            if (!byBlock[q.block_id]) byBlock[q.block_id] = [];
+            byBlock[q.block_id].push(q);
+        });
+
+        return (blocks || [])
+            .map((b: Block) => ({
+                ...b,
+                questions: (byBlock[b.id] || []).slice().sort((a, bq) => a.index_in_block - bq.index_in_block),
+            }))
+            .filter((b: any) => b.questions.length > 0);
+    }, [blocks, questions]);
 
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex items-center"><Trophy className="mr-2 h-6 w-6 text-yellow-500" /> Final Scoreboard</CardTitle>
+                <CardTitle className="flex items-center">
+                    <Trophy className="mr-2 h-6 w-6 text-yellow-500" /> Final Scoreboard
+                </CardTitle>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -362,11 +549,191 @@ function FinishedView({ participants, answers, guesses, questions, blocks }: any
                                 <TableCell>{p.display_name}</TableCell>
                                 <TableCell>{p.correctAnswers}</TableCell>
                                 <TableCell>{p.correctGuesses}</TableCell>
-                                <TableCell className="text-right font-bold text-lg">{p.score}</TableCell>
+                                <TableCell className="text-right font-bold text-lg">
+                                    {p.score}
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
                 </Table>
+
+                <div className="mt-8 border-t pt-6 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-800">
+                                Full quiz summary
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Explore performance per block and per question.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">View for</span>
+                            <Select
+                                value={selectedPlayerId}
+                                onValueChange={(value) => setSelectedPlayerId(value)}
+                            >
+                                <SelectTrigger className="w-[200px] h-8 text-xs">
+                                    <SelectValue placeholder="All players" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All players</SelectItem>
+                                    {participants.map((p: any) => (
+                                        <SelectItem key={p.id} value={p.id}>
+                                            {p.display_name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <Accordion type="single" collapsible className="w-full space-y-2">
+                        {blocksWithQuestions.map((block: any) => {
+                            const questionIds = new Set(
+                                block.questions.map((q: Question) => q.id)
+                            );
+                            const blockAnswers = answers.filter((a: Answer) =>
+                                questionIds.has(a.question_id)
+                            );
+                            const correctInBlock = blockAnswers.filter(
+                                (a: Answer) => a.is_correct
+                            ).length;
+                            const totalInBlock = blockAnswers.length;
+                            const accuracy =
+                                totalInBlock > 0
+                                    ? Math.round((correctInBlock / totalInBlock) * 100)
+                                    : null;
+
+                            return (
+                                <AccordionItem key={block.id} value={block.id}>
+                                    <AccordionTrigger className="flex items-center justify-between gap-4">
+                                        <div className="flex flex-col items-start text-left">
+                                            <span className="text-sm font-medium text-slate-800">
+                                                {block.title}
+                                            </span>
+                                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                                {block.questions.length} questions
+                                            </span>
+                                        </div>
+                                        {accuracy !== null && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-muted-foreground">
+                                                    Correct answers
+                                                </span>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={
+                                                        accuracy >= 70
+                                                            ? 'border-green-300 text-green-700 bg-green-50'
+                                                            : accuracy <= 30
+                                                            ? 'border-red-300 text-red-700 bg-red-50'
+                                                            : ''
+                                                    }
+                                                >
+                                                    {accuracy}%
+                                                </Badge>
+                                            </div>
+                                        )}
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="space-y-3 mt-2">
+                                            {block.questions.map((q: Question, index: number) => {
+                                                const qAnswers = answers.filter(
+                                                    (a: Answer) => a.question_id === q.id
+                                                );
+                                                const qTotal = qAnswers.length;
+                                                const qCorrect = qAnswers.filter(
+                                                    (a: Answer) => a.is_correct
+                                                ).length;
+
+                                                let playerSummary: React.ReactElement | null = null;
+                                                if (selectedPlayerId !== 'all') {
+                                                    const player = participants.find(
+                                                        (p: any) => p.id === selectedPlayerId
+                                                    );
+                                                    const playerAnswer = qAnswers.find(
+                                                        (a: Answer) =>
+                                                            a.participant_id === selectedPlayerId
+                                                    );
+
+                                                    let label = 'No answer';
+                                                    let badgeClass =
+                                                        'bg-slate-100 text-slate-700 border-slate-200';
+
+                                                    if (playerAnswer) {
+                                                        if (playerAnswer.is_correct) {
+                                                            label = 'Correct';
+                                                            badgeClass =
+                                                                'bg-green-100 text-green-700 border-green-300';
+                                                        } else if (playerAnswer.is_correct === false) {
+                                                            label = 'Wrong';
+                                                            badgeClass =
+                                                                'bg-red-100 text-red-700 border-red-300';
+                                                        } else {
+                                                            label = 'Pending grade';
+                                                        }
+                                                    }
+
+                                                    playerSummary = (
+                                                        <span
+                                                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badgeClass}`}
+                                                        >
+                                                            {player?.display_name || 'Player'}: {label}
+                                                        </span>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <div
+                                                        key={q.id}
+                                                        className="rounded-lg border border-slate-200 bg-slate-50/60 p-3"
+                                                    >
+                                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[11px] font-semibold text-slate-700">
+                                                                        {index + 1}
+                                                                    </span>
+                                                                    <span className="uppercase tracking-wide">
+                                                                        {q.type === 'mcq'
+                                                                            ? 'Multiple choice'
+                                                                            : 'Open'}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-sm font-medium text-slate-900">
+                                                                    {q.text}
+                                                                </p>
+                                                                {q.type === 'mcq' && (
+                                                                    <p className="text-[11px] text-muted-foreground">
+                                                                        Correct option:{' '}
+                                                                        <span className="font-semibold">
+                                                                            {q.correct_answer}
+                                                                        </span>
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col items-end gap-1 text-right">
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    {qCorrect}/{qTotal} correct
+                                                                </span>
+                                                                <span className="text-[11px] text-muted-foreground">
+                                                                    {qTotal}/{participants.length}{' '}
+                                                                    answered
+                                                                </span>
+                                                                {playerSummary}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            );
+                        })}
+                    </Accordion>
+                </div>
             </CardContent>
         </Card>
     );

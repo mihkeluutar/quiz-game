@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuizState } from '../../hooks/useQuizState';
 import { api } from '../../utils/api';
@@ -8,7 +8,7 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
 import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { Loader2, Image as ImageIcon, Send, CheckCircle2, X } from 'lucide-react';
 import { Question } from '../../types/quiz';
 
@@ -191,6 +191,76 @@ const PlayerAuthorGuess = ({ code, me, quiz, currentBlock, participants, guesses
     );
 };
 
+// Component to handle conditional text alignment based on wrapping
+const QuestionText = ({ text }: { text: string }) => {
+    const textRef = useRef<HTMLHeadingElement>(null);
+    const [isMultiLine, setIsMultiLine] = useState(false);
+
+    useEffect(() => {
+        const checkWrapping = () => {
+            if (!textRef.current) return;
+            
+            const element = textRef.current;
+            
+            // Create a temporary span to measure single-line width
+            const temp = document.createElement('span');
+            const computedStyle = window.getComputedStyle(element);
+            temp.style.visibility = 'hidden';
+            temp.style.position = 'absolute';
+            temp.style.whiteSpace = 'nowrap';
+            temp.style.fontSize = computedStyle.fontSize;
+            temp.style.fontWeight = computedStyle.fontWeight;
+            temp.style.fontFamily = computedStyle.fontFamily;
+            temp.style.letterSpacing = computedStyle.letterSpacing;
+            temp.textContent = text;
+            
+            document.body.appendChild(temp);
+            const singleLineWidth = temp.offsetWidth;
+            document.body.removeChild(temp);
+            
+            // Compare to actual element width
+            const elementWidth = element.offsetWidth;
+            
+            // If text width exceeds element width, it wraps (multi-line)
+            setIsMultiLine(singleLineWidth > elementWidth);
+        };
+
+        // Use ResizeObserver for reliable detection
+        let resizeObserver: ResizeObserver | null = null;
+        if (textRef.current && typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(checkWrapping);
+            resizeObserver.observe(textRef.current);
+        }
+        
+        // Initial checks with multiple timeouts to catch different render phases
+        const timeoutId1 = setTimeout(checkWrapping, 0);
+        const timeoutId2 = setTimeout(checkWrapping, 50);
+        const timeoutId3 = setTimeout(checkWrapping, 200);
+        
+        // Also check on window resize as fallback
+        window.addEventListener('resize', checkWrapping);
+        
+        return () => {
+            clearTimeout(timeoutId1);
+            clearTimeout(timeoutId2);
+            clearTimeout(timeoutId3);
+            if (resizeObserver && textRef.current) {
+                resizeObserver.unobserve(textRef.current);
+            }
+            window.removeEventListener('resize', checkWrapping);
+        };
+    }, [text]);
+
+    return (
+        <h2 
+            ref={textRef}
+            className={`text-xl md:text-2xl font-bold leading-tight ${isMultiLine ? 'text-left' : 'text-center'}`}
+        >
+            {text}
+        </h2>
+    );
+};
+
 const PlayerQuestion = ({ code, me, currentBlock, currentQuestion, answers }: any) => {
     // If we are in question phase but don't have the question data yet, show loading
     if (!currentQuestion) {
@@ -248,9 +318,7 @@ const PlayerQuestion = ({ code, me, currentBlock, currentQuestion, answers }: an
                             </div>
                         )}
                         <div className="p-6">
-                            <h2 className="text-xl md:text-2xl font-bold text-center leading-tight">
-                                {currentQuestion.text}
-                            </h2>
+                            <QuestionText text={currentQuestion.text} />
                         </div>
                     </CardContent>
                 </Card>
@@ -501,7 +569,7 @@ const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions,
 
             {questions.map((q: any, i: number) => (
                 <Card key={i}>
-                    <CardHeader className="pb-2">
+                    <CardHeader>
                         <CardTitle className="text-sm font-medium">Question {i + 1}</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
