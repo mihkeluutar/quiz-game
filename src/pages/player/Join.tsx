@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 export const PlayerJoin = () => {
   const navigate = useNavigate();
@@ -28,7 +28,14 @@ export const PlayerJoin = () => {
       }
 
       // 2. Join
-      const { quiz, participant, is_rejoined } = await api.joinQuiz(code.toUpperCase(), name, token);
+      // Trim whitespace from name to prevent duplicate entries (e.g., "John " vs "John")
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        toast.error('Please enter a valid name');
+        setLoading(false);
+        return;
+      }
+      const { quiz, participant, is_rejoined } = await api.joinQuiz(code.toUpperCase(), trimmedName, token);
       
       if (is_rejoined) {
           toast.success(`Welcome back, ${participant.display_name}!`);
@@ -76,7 +83,7 @@ export const PlayerJoin = () => {
               />
             </div>
             <Button type="submit" className="w-full bg-green-600 hover:bg-green-700" disabled={loading}>
-              {loading ? 'Joining...' : 'Join Party'}
+              {loading ? 'Joining...' : 'Join Quiz'}
             </Button>
           </CardContent>
         </form>

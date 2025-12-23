@@ -9,8 +9,18 @@ import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
 import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { toast } from 'sonner';
-import { Loader2, Image as ImageIcon, Send, CheckCircle2, X } from 'lucide-react';
-import { Question } from '../../types/quiz';
+import { Loader2, Image as ImageIcon, Send, CheckCircle2, X, Plus, Trash2 } from 'lucide-react';
+import { Question, getMinQuestionsPerPlayer, getSuggestedQuestionsPerPlayer } from '../../types/quiz';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../components/ui/alert-dialog';
 
 export const PlayerGame = () => {
   const { code } = useParams<{ code: string }>();
@@ -36,7 +46,7 @@ export const PlayerGame = () => {
       participantId={me.id} 
       existingBlock={myBlock}
       existingQuestions={myQuestions}
-      maxQuestions={quiz.max_questions_per_player} 
+      quiz={quiz}
     />;
   }
 
@@ -47,8 +57,15 @@ export const PlayerGame = () => {
 
   // --- 3. PLAY MODE ---
   
-  // Phase: AUTHOR_GUESS or AUTHOR_REVEAL
+  // Phase: AUTHOR_GUESS or AUTHOR_REVEAL (only for player blocks)
   if ((quiz.phase === 'AUTHOR_GUESS' || quiz.phase === 'AUTHOR_REVEAL') && currentBlock) {
+      // Skip author guessing for host blocks
+      const isHostBlock = currentBlock.author_type === 'host' || !currentBlock.author_participant_id;
+      if (isHostBlock) {
+          // Host blocks should never show author guessing - this shouldn't happen, but handle gracefully
+          return <div className="p-8 text-center">Loading next question...</div>;
+      }
+      
       return (
           <PlayerAuthorGuess 
             code={code!} 
@@ -465,16 +482,21 @@ const compressImage = (file: File): Promise<File> => {
     });
 };
 
-const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions, maxQuestions }: any) => {
+const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions, quiz }: any) => {
+    const minQuestions = getMinQuestionsPerPlayer(quiz);
+    const suggestedQuestions = getSuggestedQuestionsPerPlayer(quiz);
+    const maxQuestions = quiz.max_questions_per_player;
+    
     const [title, setTitle] = useState(existingBlock?.title || '');
     const [saving, setSaving] = useState(false);
     const [questions, setQuestions] = useState<Partial<Question>[]>(
         existingQuestions.length > 0 
         ? existingQuestions 
-        : Array(maxQuestions).fill({ type: 'open', text: '', options: ['', ''], correct_answer: '' })
+        : Array(suggestedQuestions).fill({ type: 'open', text: '', options: ['', ''], correct_answer: '' })
     );
     const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
     const [joinedWithoutQuestions, setJoinedWithoutQuestions] = useState(false);
+    const [questionToDelete, setQuestionToDelete] = useState<number | null>(null);
 
     // If user has already saved a block, they are effectively "ready" but can edit.
     // If they choose to join without questions, we show waiting screen.
@@ -535,15 +557,56 @@ const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions,
     };
 
 
+    const addQuestion = () => {
+        if (questions.length < maxQuestions) {
+            setQuestions([...questions, { type: 'open', text: '', options: ['', ''], correct_answer: '' }]);
+        }
+    };
+
+    const handleRemoveClick = (idx: number) => {
+        const question = questions[idx];
+        const hasContent = question.text && question.text.trim() !== '';
+        
+        if (hasContent) {
+            // Show confirmation dialog for non-empty questions
+            setQuestionToDelete(idx);
+        } else {
+            // Remove empty questions immediately
+            removeQuestion(idx);
+        }
+    };
+
+    const removeQuestion = (idx: number) => {
+        if (questions.length > minQuestions) {
+            const newQuestions = questions.filter((_, i) => i !== idx);
+            setQuestions(newQuestions);
+            setQuestionToDelete(null);
+        }
+    };
+
+
     const handleSave = async () => {
         setSaving(true);
         try {
             // Validate
             if (!title) throw new Error("Block title is required");
+            
+            // Count questions with non-empty text
+            const questionsWithText = questions.filter(q => q.text && q.text.trim() !== '');
+            if (questionsWithText.length < minQuestions) {
+                throw new Error(`You must create at least ${minQuestions} question${minQuestions > 1 ? 's' : ''} with text`);
+            }
+            
+            // Validate each question
             for (const q of questions) {
-                if (!q.text) throw new Error("All questions must have text");
-                if (q.type === 'mcq' && (!q.options || q.options.length < 2)) throw new Error("MCQs need at least 2 options");
-                if (!q.correct_answer) throw new Error("All questions need a correct answer");
+                if (q.text && q.text.trim() !== '') {
+                    if (q.type === 'mcq' && (!q.options || q.options.length < 2)) {
+                        throw new Error("MCQs need at least 2 options");
+                    }
+                    if (!q.correct_answer) {
+                        throw new Error("All questions need a correct answer");
+                    }
+                }
             }
 
             await api.saveBlock(code, participantId, title, questions);
@@ -559,7 +622,9 @@ const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions,
         <div className="p-4 space-y-6 pb-20">
             <div className="space-y-2">
                 <h1 className="text-2xl font-bold">Create Your Block</h1>
-                <p className="text-sm text-slate-500">Add {maxQuestions} questions for the quiz.</p>
+                <p className="text-sm text-slate-500">
+                    Create between {minQuestions} and {maxQuestions} questions (suggested: {suggestedQuestions}).
+                </p>
             </div>
             
             <div className="space-y-2">
@@ -569,8 +634,19 @@ const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions,
 
             {questions.map((q: any, i: number) => (
                 <Card key={i}>
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Question {i + 1}</CardTitle>
+                        {questions.length > minQuestions && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveClick(i)}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <Input 
@@ -620,29 +696,52 @@ const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions,
                         {q.type === 'mcq' && (
                             <div className="space-y-2 pl-4 border-l-2 border-slate-100">
                                 <Label>Options</Label>
-                                {(q.options || ['', '']).map((opt: string, optIdx: number) => (
-                                    <div key={optIdx} className="flex gap-2">
-                                        <Input 
-                                            value={opt} 
-                                            onChange={e => {
-                                                const newOpts = [...(q.options || [])];
-                                                newOpts[optIdx] = e.target.value;
-                                                updateQuestion(i, 'options', newOpts);
-                                            }}
-                                            placeholder={`Option ${optIdx + 1}`}
-                                            className="h-8 text-sm"
-                                        />
-                                        <div className="flex items-center">
-                                            <input 
-                                                type="radio" 
-                                                name={`correct-${i}`}
-                                                checked={q.correct_answer === opt && opt !== ''}
-                                                onChange={() => updateQuestion(i, 'correct_answer', opt)}
-                                                className="w-4 h-4 text-green-600"
+                                {(q.options || ['', '']).map((opt: string, optIdx: number) => {
+                                    const options = q.options || [''];
+                                    const canRemove = options.length > 2;
+                                    
+                                    return (
+                                        <div key={optIdx} className="flex gap-2 items-center">
+                                            <Input 
+                                                value={opt} 
+                                                onChange={e => {
+                                                    const newOpts = [...options];
+                                                    newOpts[optIdx] = e.target.value;
+                                                    updateQuestion(i, 'options', newOpts);
+                                                }}
+                                                placeholder={`Option ${optIdx + 1}`}
+                                                className="h-8 text-sm flex-1"
                                             />
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    type="radio" 
+                                                    name={`correct-${i}`}
+                                                    checked={q.correct_answer === opt && opt !== ''}
+                                                    onChange={() => updateQuestion(i, 'correct_answer', opt)}
+                                                    className="w-4 h-4 text-green-600"
+                                                />
+                                                {canRemove && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const newOpts = options.filter((_, idx) => idx !== optIdx);
+                                                            // If we're removing the correct answer, clear it
+                                                            if (q.correct_answer === opt) {
+                                                                updateQuestion(i, 'correct_answer', '');
+                                                            }
+                                                            updateQuestion(i, 'options', newOpts);
+                                                        }}
+                                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 <Button 
                                     variant="ghost" 
                                     size="sm" 
@@ -665,6 +764,18 @@ const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions,
                 </Card>
             ))}
 
+            {questions.length < maxQuestions && (
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={addQuestion}
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Another Question
+                </Button>
+            )}
+
             <Button className="w-full" size="lg" onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving...' : existingBlock ? 'Update Questions' : 'Save & Join'}
             </Button>
@@ -677,6 +788,26 @@ const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions,
                     </Button>
                 </div>
             )}
+
+            <AlertDialog open={questionToDelete !== null} onOpenChange={(open) => !open && setQuestionToDelete(null)}>
+                <AlertDialogContent className="max-w-md mx-4">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Question?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This question has content. Are you sure you want to delete it? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => questionToDelete !== null && removeQuestion(questionToDelete)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 focus:ring-destructive"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

@@ -34,8 +34,25 @@ async function fetchAPI(endpoint: string, method: string, body?: any, token?: st
 }
 
 export const api = {
-  createQuiz: (name: string, max_questions: number, host_id: string) => 
-    fetchAPI('/quiz/create', 'POST', { name, max_questions, host_id }),
+  createQuiz: (
+    name: string,
+    min_questions_per_player: number,
+    suggested_questions_per_player: number,
+    max_questions_per_player: number,
+    enable_author_guessing: boolean,
+    host_id: string
+  ) => {
+    const body = { 
+      name, 
+      min_questions_per_player,
+      suggested_questions_per_player,
+      max_questions_per_player,
+      enable_author_guessing,
+      host_id 
+    };
+    console.log('API call - createQuiz body:', body);
+    return fetchAPI('/quiz/create', 'POST', body);
+  },
 
   listHostQuizzes: (host_id: string) =>
     fetchAPI(`/quiz/host/${encodeURIComponent(host_id)}`, 'GET'),
@@ -47,7 +64,29 @@ export const api = {
     fetchAPI(`/quiz/${code}`, 'GET', undefined, player_token),
 
   saveBlock: (code: string, participant_id: string, title: string, questions: Partial<Question>[]) =>
-    fetchAPI(`/quiz/${code}/block`, 'POST', { participant_id, title, questions }),
+    fetchAPI(`/quiz/${code}/block`, 'POST', { participant_id, title, questions, author_type: 'player' }),
+
+  saveHostBlock: (code: string, block_id: string | null, title: string, questions: Partial<Question>[]) =>
+    fetchAPI(`/quiz/${code}/block`, 'POST', { block_id, title, questions, author_type: 'host' }),
+
+  deleteHostBlock: async (code: string, block_id: string) => {
+    // Get current state
+    const state = await api.getQuizState(code);
+    const blocks = state.blocks || [];
+    const questionsMap = state.questions || {};
+    
+    // Remove block
+    const updatedBlocks = blocks.filter((b: Block) => b.id !== block_id);
+    
+    // Remove questions for this block
+    const updatedQuestions = { ...questionsMap };
+    delete updatedQuestions[block_id];
+    
+    // We need to update the server - for now, we'll use a workaround
+    // by saving an empty block and then the server should handle deletion
+    // Actually, we need a delete endpoint. Let me add that to server first.
+    throw new Error('Delete host block not yet implemented - need server endpoint');
+  },
 
   performAction: (code: string, action: string, payload?: any) =>
     fetchAPI(`/quiz/${code}/action`, 'POST', { action, payload }),

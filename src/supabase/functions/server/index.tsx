@@ -71,7 +71,52 @@ const getGuessesKey = (code: string) => `quiz:${code}:guesses`;
 app.post("/make-server-cbaebbc3/quiz/create", async (c) => {
   try {
     const body = await c.req.json();
-    const { name, max_questions, host_id } = body;
+    const { 
+      name, 
+      host_id,
+      // New parameters
+      min_questions_per_player,
+      suggested_questions_per_player,
+      max_questions_per_player,
+      enable_author_guessing,
+      // Backward compatibility: old parameter
+      max_questions
+    } = body;
+    
+    // Backward compatibility: if old max_questions is provided, use it
+    let finalMinQuestions: number;
+    let finalSuggestedQuestions: number;
+    let finalMaxQuestions: number;
+    let finalEnableAuthorGuessing: boolean;
+    
+    if (max_questions !== undefined && max_questions_per_player === undefined) {
+      // Old format: set defaults based on max_questions
+      finalMaxQuestions = max_questions || 10;
+      finalSuggestedQuestions = finalMaxQuestions;
+      finalMinQuestions = 1;
+      finalEnableAuthorGuessing = true;
+    } else {
+      // New format: use provided values or defaults
+      finalMaxQuestions = max_questions_per_player ?? 10;
+      finalSuggestedQuestions = suggested_questions_per_player ?? 3;
+      finalMinQuestions = min_questions_per_player ?? 1;
+      finalEnableAuthorGuessing = enable_author_guessing ?? true;
+    }
+    
+    // Validation
+    if (finalMinQuestions < 1) {
+      return c.json({ error: "min_questions_per_player must be >= 1" }, 400);
+    }
+    if (finalSuggestedQuestions < finalMinQuestions) {
+      return c.json({ 
+        error: "suggested_questions_per_player must be >= min_questions_per_player" 
+      }, 400);
+    }
+    if (finalMaxQuestions < finalSuggestedQuestions) {
+      return c.json({ 
+        error: "max_questions_per_player must be >= suggested_questions_per_player" 
+      }, 400);
+    }
     
     let code = generateCode();
     // Ensure uniqueness (simple retry)
@@ -87,7 +132,10 @@ app.post("/make-server-cbaebbc3/quiz/create", async (c) => {
       name,
       host_user_id: host_id,
       status: "CREATION",
-      max_questions_per_player: max_questions || 3,
+      max_questions_per_player: finalMaxQuestions,
+      min_questions_per_player: finalMinQuestions,
+      suggested_questions_per_player: finalSuggestedQuestions,
+      enable_author_guessing: finalEnableAuthorGuessing,
       created_at: new Date().toISOString(),
       phase: "QUESTION"
     };
@@ -137,7 +185,13 @@ app.get("/quiz/host/:host_id", listHostQuizzesHandler);
 app.post("/make-server-cbaebbc3/quiz/join", async (c) => {
   try {
     const body = await c.req.json();
-    const { code, display_name, player_token } = body;
+    let { code, display_name, player_token } = body;
+
+    // Normalize display_name: trim whitespace to prevent duplicate entries
+    display_name = display_name?.trim() || '';
+    if (!display_name) {
+      return c.json({ error: "Display name is required" }, 400);
+    }
 
     const quiz = await kv.get(getQuizKey(code));
     if (!quiz) {
@@ -152,9 +206,13 @@ app.post("/make-server-cbaebbc3/quiz/join", async (c) => {
     let is_rejoined = false;
 
     // 2. Check by name (different device / lost session)
+    // Normalize names for comparison: trim and lowercase
     if (!participant) {
-        // Case-insensitive check
-        const existingByName = participants.find((p: any) => p.display_name.toLowerCase() === display_name.toLowerCase());
+        const normalizedDisplayName = display_name.toLowerCase().trim();
+        const existingByName = participants.find((p: any) => {
+          const normalizedExistingName = (p.display_name || '').toLowerCase().trim();
+          return normalizedExistingName === normalizedDisplayName;
+        });
         if (existingByName) {
              participant = existingByName;
              // Update token to new one so they can play on this device
@@ -258,30 +316,85 @@ app.get("/make-server-cbaebbc3/quiz/:code", async (c) => {
   });
 });
 
-// 4. Save Block (Player)
+// 4. Save Block (Player or Host)
 app.post("/make-server-cbaebbc3/quiz/:code/block", async (c) => {
   const code = c.req.param("code");
   const body = await c.req.json();
-  const { participant_id, title, questions } = body;
+  const { participant_id, title, questions, author_type, block_id } = body;
 
   const quiz = await kv.get(getQuizKey(code));
   if (quiz.status !== 'CREATION') return c.json({ error: "Quiz locked" }, 400);
 
   const blocks = (await kv.get(getBlocksKey(code))) || [];
-  let block = blocks.find((b: any) => b.author_participant_id === participant_id);
-
-  if (!block) {
-    block = {
-      id: crypto.randomUUID(),
-      quiz_id: quiz.id,
-      author_participant_id: participant_id,
-      title,
-      is_locked: false
-    };
-    blocks.push(block);
-  } else {
-    block.title = title;
+  
+  // Determine if this is a host block or player block
+  let isHostBlock = false;
+  if (author_type === 'host') {
+    isHostBlock = true;
+  } else if (!participant_id) {
+    // No participant_id means it could be a host block
+    if (block_id) {
+      // Check if the block_id points to an existing host block
+      const existingBlock = blocks.find((b: any) => b.id === block_id);
+      isHostBlock = existingBlock && (!existingBlock.author_participant_id || existingBlock.author_type === 'host');
+    } else {
+      // No participant_id and no block_id = creating new host block
+      isHostBlock = true;
+    }
   }
+  
+  let block;
+  if (isHostBlock) {
+    // Host block: find by block_id if provided (editing), or create new (creating)
+    if (block_id) {
+      // Editing existing host block
+      block = blocks.find((b: any) => b.id === block_id && (!b.author_participant_id || b.author_type === 'host'));
+      if (block) {
+        block.title = title;
+      } else {
+        return c.json({ error: "Host block not found" }, 404);
+      }
+    } else {
+      // Creating new host block - always create a new one (host can have 0...N blocks)
+      block = {
+        id: crypto.randomUUID(),
+        quiz_id: quiz.id,
+        author_type: 'host',
+        author_participant_id: null,
+        title,
+        is_locked: false,
+        order_index: -1 // Host blocks get negative order_index to appear first
+      };
+      blocks.push(block);
+    }
+  } else {
+    // Player block: find by participant_id
+    block = blocks.find((b: any) => b.author_participant_id === participant_id);
+    if (!block) {
+      block = {
+        id: crypto.randomUUID(),
+        quiz_id: quiz.id,
+        author_type: 'player',
+        author_participant_id: participant_id,
+        title,
+        is_locked: false,
+        order_index: 0
+      };
+      blocks.push(block);
+    } else {
+      block.title = title;
+    }
+  }
+  
+  // Sort blocks: host blocks first (negative order_index), then player blocks
+  blocks.sort((a: any, b: any) => {
+    const aOrder = a.order_index ?? (a.author_type === 'host' ? -1 : 0);
+    const bOrder = b.order_index ?? (b.author_type === 'host' ? -1 : 0);
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    // If same order, maintain creation order
+    return 0;
+  });
+  
   await kv.set(getBlocksKey(code), blocks);
 
   // Save questions
@@ -314,17 +427,24 @@ app.post("/make-server-cbaebbc3/quiz/:code/action", async (c) => {
   if (action === 'START_GAME') {
     quiz.status = 'PLAY';
     quiz.phase = 'QUESTION';
-    // Optional shuffle controlled by host via payload.shuffleBlocks
+    
+    // Separate host and player blocks
+    const hostBlocks = blocks.filter((b: any) => b.author_type === 'host' || (!b.author_participant_id && b.author_type !== 'player'));
+    const playerBlocks = blocks.filter((b: any) => b.author_type === 'player' || (b.author_participant_id && b.author_type !== 'host'));
+    
+    // Optional shuffle controlled by host via payload.shuffleBlocks (only shuffle player blocks)
     const shouldShuffle = payload && payload.shuffleBlocks;
-    let orderedBlocks = blocks;
-    if (shouldShuffle && Array.isArray(blocks) && blocks.length > 1) {
-      orderedBlocks = [...blocks];
-      for (let i = orderedBlocks.length - 1; i > 0; i--) {
+    let orderedPlayerBlocks = [...playerBlocks];
+    if (shouldShuffle && orderedPlayerBlocks.length > 1) {
+      for (let i = orderedPlayerBlocks.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [orderedBlocks[i], orderedBlocks[j]] = [orderedBlocks[j], orderedBlocks[i]];
+        [orderedPlayerBlocks[i], orderedPlayerBlocks[j]] = [orderedPlayerBlocks[j], orderedPlayerBlocks[i]];
       }
-      await kv.set(getBlocksKey(code), orderedBlocks);
     }
+    
+    // Host blocks first, then shuffled player blocks
+    const orderedBlocks = [...hostBlocks, ...orderedPlayerBlocks];
+    await kv.set(getBlocksKey(code), orderedBlocks);
     
     if (orderedBlocks.length > 0) {
         quiz.current_block_id = orderedBlocks[0].id;
@@ -345,9 +465,28 @@ app.post("/make-server-cbaebbc3/quiz/:code/action", async (c) => {
               quiz.current_question_id = qs[currentIdx + 1].id;
               quiz.phase = 'QUESTION';
           } else {
-              // End of block -> Guess phase
-              quiz.phase = 'AUTHOR_GUESS';
-              quiz.current_question_id = null; // No active question
+              // End of block -> Check if host block or if author guessing is enabled
+              const isHostBlock = currentBlock.author_type === 'host' || !currentBlock.author_participant_id;
+              const shouldSkipGuessing = isHostBlock || !quiz.enable_author_guessing;
+              
+              if (shouldSkipGuessing) {
+                  // Skip guess phase - go directly to next block or finish
+                  // Use the ordered blocks array (blocks are already sorted from START_GAME)
+                  const currentBlockIdx = blocks.findIndex((b: any) => b.id === quiz.current_block_id);
+                  if (currentBlockIdx >= 0 && currentBlockIdx < blocks.length - 1) {
+                      const nextBlock = blocks[currentBlockIdx + 1];
+                      quiz.current_block_id = nextBlock.id;
+                      const nextQs = questionsMap[nextBlock.id] || [];
+                      quiz.current_question_id = nextQs.length > 0 ? nextQs[0].id : null;
+                      quiz.phase = 'QUESTION';
+                  } else {
+                      quiz.status = 'FINISHED';
+                  }
+              } else {
+                  // Player block with author guessing enabled -> Guess phase
+                  quiz.phase = 'AUTHOR_GUESS';
+                  quiz.current_question_id = null; // No active question
+              }
           }
       }
   }

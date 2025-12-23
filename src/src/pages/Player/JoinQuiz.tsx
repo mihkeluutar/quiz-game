@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { toast } from 'sonner@2.0.3';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import { toast } from 'sonner';
 
 export default function JoinQuiz() {
   const [code, setCode] = useState('');
@@ -17,6 +17,13 @@ export default function JoinQuiz() {
     e.preventDefault();
     if (!code || !name) {
       toast.error('Please fill in all fields');
+      return;
+    }
+
+    // Trim whitespace from name to prevent duplicate entries
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      toast.error('Please enter a valid name');
       return;
     }
 
@@ -48,7 +55,7 @@ export default function JoinQuiz() {
       }
 
       // 3. Register Participant
-      // Check if already registered
+      // Check if already registered by token
       const { data: existing } = await supabase
         .from('quiz_participants')
         .select('id, display_name')
@@ -57,24 +64,55 @@ export default function JoinQuiz() {
         .single();
 
       if (!existing) {
-        const { error: joinError } = await supabase
+        // Also check by normalized name (case-insensitive, trimmed) to prevent duplicates
+        const normalizedName = trimmedName.toLowerCase().trim();
+        
+        // Check if any existing participant has the same normalized name
+        const { data: allParticipants } = await supabase
           .from('quiz_participants')
-          .insert({
-            quiz_id: quizId,
-            display_name: name,
-            player_token: token
-          });
+          .select('id, display_name')
+          .eq('quiz_id', quizId);
+        
+        const duplicateByName = allParticipants?.find((p: any) => 
+          (p.display_name || '').toLowerCase().trim() === normalizedName
+        );
 
-        if (joinError) {
-          console.error(joinError);
-          toast.error('Failed to join quiz.');
-          setLoading(false);
-          return;
+        if (duplicateByName) {
+          // Re-joining with same name but different device - update token
+          const { error: updateError } = await supabase
+            .from('quiz_participants')
+            .update({ player_token: token })
+            .eq('id', duplicateByName.id);
+          
+          if (updateError) {
+            console.error(updateError);
+            toast.error('Failed to rejoin quiz.');
+            setLoading(false);
+            return;
+          }
+        } else {
+          // New participant
+          const { error: joinError } = await supabase
+            .from('quiz_participants')
+            .insert({
+              quiz_id: quizId,
+              display_name: trimmedName,
+              player_token: token
+            });
+
+          if (joinError) {
+            console.error(joinError);
+            toast.error('Failed to join quiz.');
+            setLoading(false);
+            return;
+          }
         }
       } else {
-        // If re-joining, maybe update name? Or just welcome back.
-        if (existing.display_name !== name) {
-            await supabase.from('quiz_participants').update({ display_name: name }).eq('id', existing.id);
+        // If re-joining, update name if changed (but keep normalized)
+        const normalizedExisting = (existing.display_name || '').toLowerCase().trim();
+        const normalizedNew = trimmedName.toLowerCase().trim();
+        if (normalizedExisting !== normalizedNew) {
+            await supabase.from('quiz_participants').update({ display_name: trimmedName }).eq('id', existing.id);
         }
       }
 

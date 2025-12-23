@@ -15,7 +15,8 @@ import {
   AccordionTrigger,
 } from '../../components/ui/accordion';
 import { toast } from 'sonner';
-import { Check, X, ArrowRight, ArrowLeft, Trophy, Users, Eye, Loader2 } from 'lucide-react';
+import { Check, X, ArrowRight, ArrowLeft, Trophy, Users, Eye, Loader2, Plus, Trash2, Edit } from 'lucide-react';
+import { HostBlockEditor } from '../../components/HostBlockEditor';
 
 import {
   AlertDialog,
@@ -121,6 +122,8 @@ export const HostDashboard = () => {
   const [showFinishConfirmation, setShowFinishConfirmation] = useState(false);
   const [shuffleBlocksOnStart, setShuffleBlocksOnStart] = useState(true);
   const [pendingGrades, setPendingGrades] = useState<Record<string, boolean>>({});
+  const [editingHostBlockId, setEditingHostBlockId] = useState<string | null>(null);
+  const [creatingHostBlock, setCreatingHostBlock] = useState(false);
 
   // Reset revealed state when question changes
   useEffect(() => {
@@ -212,6 +215,92 @@ export const HostDashboard = () => {
         </div>
 
         <div className="w-full max-w-4xl space-y-6">
+             {/* Host Question Blocks Section */}
+             <div className="space-y-4">
+               <div className="flex justify-between items-center border-b border-slate-200 pb-4">
+                 <h2 className="text-xl font-medium text-slate-600">Host Question Blocks</h2>
+                 {!editingHostBlockId && !creatingHostBlock && (
+                   <Button onClick={() => setCreatingHostBlock(true)} variant="outline" size="sm">
+                     <Plus className="h-4 w-4 mr-2" />
+                     Create New Block
+                   </Button>
+                 )}
+               </div>
+               
+               {editingHostBlockId || creatingHostBlock ? (
+                 <HostBlockEditor
+                   code={code!}
+                   blockId={editingHostBlockId}
+                   existingBlock={editingHostBlockId ? blocks.find(b => b.id === editingHostBlockId) : undefined}
+                   existingQuestions={editingHostBlockId ? (questions[editingHostBlockId] || []) : []}
+                   onSave={() => {
+                     setEditingHostBlockId(null);
+                     setCreatingHostBlock(false);
+                     refresh();
+                   }}
+                   onCancel={() => {
+                     setEditingHostBlockId(null);
+                     setCreatingHostBlock(false);
+                   }}
+                 />
+               ) : (
+                 <div className="space-y-3">
+                   {blocks
+                     .filter((b: any) => b.author_type === 'host' || (!b.author_participant_id && b.author_type !== 'player'))
+                     .map((block: any) => {
+                       const blockQuestions = questions[block.id] || [];
+                       return (
+                         <Card key={block.id}>
+                           <CardHeader>
+                             <div className="flex items-center justify-between">
+                               <div>
+                                 <CardTitle>{block.title}</CardTitle>
+                                 <CardDescription>
+                                   {blockQuestions.length} {blockQuestions.length === 1 ? 'question' : 'questions'}
+                                 </CardDescription>
+                               </div>
+                               <div className="flex gap-2">
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={() => setEditingHostBlockId(block.id)}
+                                 >
+                                   <Edit className="h-4 w-4 mr-2" />
+                                   Edit
+                                 </Button>
+                                 <Button
+                                   variant="outline"
+                                   size="sm"
+                                   onClick={async () => {
+                                     if (confirm(`Delete block "${block.title}"? This cannot be undone.`)) {
+                                       try {
+                                         // For now, we'll need to implement delete on server
+                                         // For now, just show error
+                                         toast.error('Delete functionality coming soon');
+                                       } catch (e: any) {
+                                         toast.error(e.message);
+                                       }
+                                     }
+                                   }}
+                                   className="text-destructive hover:text-destructive"
+                                 >
+                                   <Trash2 className="h-4 w-4" />
+                                 </Button>
+                               </div>
+                             </div>
+                           </CardHeader>
+                         </Card>
+                       );
+                     })}
+                   {blocks.filter((b: any) => b.author_type === 'host' || (!b.author_participant_id && b.author_type !== 'player')).length === 0 && (
+                     <p className="text-sm text-slate-500 text-center py-8">No host blocks yet. Create one to add questions before players join.</p>
+                   )}
+                 </div>
+               )}
+             </div>
+
+             <Separator />
+
              <div className="flex justify-between items-end border-b border-slate-200 pb-4">
                  <h2 className="text-xl font-medium text-slate-600">
                      Participants <span className="text-slate-400">({participants.length})</span>
@@ -289,14 +378,15 @@ export const HostDashboard = () => {
         
         // Total questions in game
         const allQuestions = (Object.values(questions) as any[][]).flat();
-        // Questions this person could answer (exclude their own)
-        const questionsToAnswerCount = allQuestions.filter(q => !myQuestionIds.has(q.id)).length;
+        // Players can answer ALL questions, including their own
+        const questionsToAnswerCount = allQuestions.length;
         
+        // Count all correct answers (including their own questions)
         const qPoints = answers.filter(a => a.participant_id === p.id && a.is_correct).length;
         
         // Guesses
-        // A person guesses on all blocks except their own
-        const blocksToGuessCount = blocks.length - (myBlock ? 1 : 0);
+        // Players can guess on ALL blocks, including their own
+        const blocksToGuessCount = blocks.length;
         const gPoints = guesses.filter(g => g.guesser_participant_id === p.id && g.is_correct).length;
 
         return { 
@@ -733,7 +823,27 @@ export const HostDashboard = () => {
            if (currentQIdx < blockQs.length - 1) {
                setState({ current_question_id: blockQs[currentQIdx + 1].id });
            } else {
-               setState({ phase: 'AUTHOR_GUESS', current_question_id: null });
+               // End of block - check if host block or if author guessing is disabled
+               const isHostBlock = currentBlock && (currentBlock.author_type === 'host' || !currentBlock.author_participant_id);
+               const shouldSkipGuessing = isHostBlock || !quiz.enable_author_guessing;
+               
+               if (shouldSkipGuessing) {
+                   // Skip guess phase - go directly to next block
+                   if (currentBlockIdx < blocks.length - 1) {
+                       const nextBlock = blocks[currentBlockIdx + 1];
+                       const nextQs = questions[nextBlock.id] || [];
+                       setState({ 
+                           current_block_id: nextBlock.id,
+                           current_question_id: nextQs.length > 0 ? nextQs[0].id : null,
+                           phase: 'QUESTION'
+                       });
+                   } else {
+                       await handleAction('FINISH_GAME');
+                   }
+               } else {
+                   // Player block with author guessing enabled -> Guess phase
+                   setState({ phase: 'AUTHOR_GUESS', current_question_id: null });
+               }
            }
            return;
        }
@@ -1065,7 +1175,7 @@ export const HostDashboard = () => {
                     );
                 })()}
             </div>
-        ) : (quiz.phase === 'AUTHOR_GUESS' || quiz.phase === 'AUTHOR_REVEAL') && currentBlock ? (
+        ) : (quiz.phase === 'AUTHOR_GUESS' || quiz.phase === 'AUTHOR_REVEAL') && currentBlock && (currentBlock.author_type !== 'host' && currentBlock.author_participant_id) ? (
             <div className="flex flex-col items-center justify-center min-h-[500px] space-y-12 animate-in fade-in duration-700">
                  <div className="text-center space-y-4">
                     <span className="text-slate-400 uppercase tracking-widest font-semibold text-sm">Block Author Mystery</span>
