@@ -371,47 +371,56 @@ export const HostDashboard = () => {
 
   // 2. FINISHED
   if (quiz.status === 'FINISHED') {
-    const scores = participants.map(p => {
-        const myBlock = blocks.find(b => b.author_participant_id === p.id);
-        const myQuestions = myBlock ? questions[myBlock.id] || [] : [];
-        const myQuestionIds = new Set(myQuestions.map(q => q.id));
-        
-        // Total questions in game
-        const allQuestions = (Object.values(questions) as any[][]).flat();
-        // Players can answer ALL questions, including their own
-        const questionsToAnswerCount = allQuestions.length;
-        
-        // Count all correct answers (including their own questions)
-        const qPoints = answers.filter(a => a.participant_id === p.id && a.is_correct).length;
-        
-        // Guesses
-        // Players can guess on ALL blocks, including their own
-        const blocksToGuessCount = blocks.length;
-        const gPoints = guesses.filter(g => g.guesser_participant_id === p.id && g.is_correct).length;
+    // ⚡ Bolt: Memoize expensive calculations for the results screen.
+    // These stats are derived from the full quiz data, which can be large.
+    // useMemo ensures we only re-calculate them when the underlying data changes,
+    // preventing sluggish UI re-renders on the "FINISHED" screen.
+    const scores = useMemo(() => {
+        return participants.map(p => {
+            const myBlock = blocks.find(b => b.author_participant_id === p.id);
+            const myQuestions = myBlock ? questions[myBlock.id] || [] : [];
+            const myQuestionIds = new Set(myQuestions.map(q => q.id));
 
-        return { 
-            ...p, 
-            score: qPoints + gPoints, 
-            qPoints, 
-            maxQPoints: questionsToAnswerCount,
-            gPoints, 
-            maxGPoints: blocksToGuessCount 
-        };
-    }).sort((a, b) => b.score - a.score);
+            const allQuestions = (Object.values(questions) as any[][]).flat();
+            const questionsToAnswerCount = allQuestions.length;
 
-    // Stats
-    const blockStats = blocks.map(b => {
-        const bQs = questions[b.id] || [];
-        const bQIds = new Set(bQs.map(q => q.id));
-        const bAnswers = answers.filter(a => bQIds.has(a.question_id));
-        const correct = bAnswers.filter(a => a.is_correct).length;
-        const total = bAnswers.length;
-        const accuracy = total > 0 ? (correct / total) : 0; // 0 to 1
-        return { ...b, accuracy };
-    });
+            const qPoints = answers.filter(a => a.participant_id === p.id && a.is_correct).length;
 
-    const hardestBlock = [...blockStats].sort((a, b) => a.accuracy - b.accuracy)[0]; // Lowest accuracy first
-    const easiestBlock = [...blockStats].sort((a, b) => b.accuracy - a.accuracy)[0]; // Highest accuracy first
+            const blocksToGuessCount = blocks.length;
+            const gPoints = guesses.filter(g => g.guesser_participant_id === p.id && g.is_correct).length;
+
+            return {
+                ...p,
+                score: qPoints + gPoints,
+                qPoints,
+                maxQPoints: questionsToAnswerCount,
+                gPoints,
+                maxGPoints: blocksToGuessCount
+            };
+        }).sort((a, b) => b.score - a.score);
+    }, [participants, blocks, questions, answers, guesses]);
+
+    // ⚡ Bolt: Memoize block accuracy stats.
+    const blockStats = useMemo(() => {
+        return blocks.map(b => {
+            const bQs = questions[b.id] || [];
+            const bQIds = new Set(bQs.map(q => q.id));
+            const bAnswers = answers.filter(a => bQIds.has(a.question_id));
+            const correct = bAnswers.filter(a => a.is_correct).length;
+            const total = bAnswers.length;
+            const accuracy = total > 0 ? (correct / total) : 0;
+            return { ...b, accuracy };
+        });
+    }, [blocks, questions, answers]);
+
+    const hardestBlock = useMemo(() =>
+        [...blockStats].sort((a, b) => a.accuracy - b.accuracy)[0],
+        [blockStats]
+    );
+    const easiestBlock = useMemo(() =>
+        [...blockStats].sort((a, b) => b.accuracy - a.accuracy)[0],
+        [blockStats]
+    );
 
     const top3 = scores.slice(0, 3);
 
