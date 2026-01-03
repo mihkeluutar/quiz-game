@@ -330,7 +330,7 @@ const PlayerQuestion = ({ code, me, currentBlock, currentQuestion, answers }: an
                                 <img 
                                   src={currentQuestion.image_url} 
                                   alt="Question Image" 
-                                  className="w-full max-h-[300px] object-contain mx-auto" 
+                                  className="w-full max-h-72 object-contain mx-auto"
                                 />
                             </div>
                         )}
