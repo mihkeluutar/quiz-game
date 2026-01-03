@@ -8,7 +8,27 @@ import * as kv from "./kv_store.tsx";
 const app = new Hono();
 
 app.use('*', logger(console.log));
-app.use('*', cors());
+// Restrict CORS to specific origins for security
+const allowedOrigins = [
+  Deno.env.get("APP_URL_LOCAL") || "http://localhost:3000",
+  // Add production and preview URLs to environment variables
+  Deno.env.get("APP_URL_PROD"),
+  Deno.env.get("APP_URL_PREVIEW"),
+].filter(Boolean); // Filter out any undefined values
+
+app.use('*', cors({
+  origin: (origin) => {
+    // Allow requests from the same origin (e.g., server-side rendering)
+    if (!origin) {
+        return undefined; // Or handle as needed
+    }
+    if (allowedOrigins.includes(origin)) {
+      return origin;
+    }
+    // Deny requests from all other origins
+    return null;
+  }
+}));
 
 // Initialize Supabase Client
 const supabase = createClient(
