@@ -96,9 +96,9 @@ export const PlayerGame = () => {
        return (
           <div className="flex items-center justify-center h-screen p-6 text-center">
               <div className="space-y-4">
-                  <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-500" />
+                  <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
                   <h2 className="text-xl font-semibold">Loading current round...</h2>
-                  <p className="text-slate-500">Syncing with host...</p>
+                  <p className="text-muted-foreground">Syncing with host...</p>
               </div>
           </div>
       );
@@ -107,9 +107,9 @@ export const PlayerGame = () => {
   return (
       <div className="flex items-center justify-center h-screen p-6 text-center">
           <div className="space-y-4">
-              <Loader2 className="w-12 h-12 animate-spin mx-auto text-red-500" />
+              <Loader2 className="w-12 h-12 animate-spin mx-auto text-destructive" />
               <h2 className="text-xl font-semibold">Waiting for host...</h2>
-              <p className="text-slate-500">Get ready for the next question!</p>
+              <p className="text-muted-foreground">Get ready for the next question!</p>
           </div>
       </div>
   );
@@ -124,11 +124,11 @@ const PlayerFinished = ({ me, answers, guesses }: any) => {
 
     return (
         <div className="p-6 space-y-8 text-center">
-            <h1 className="text-3xl font-bold text-red-600">Quiz Finished!</h1>
+            <h1 className="text-3xl font-bold text-destructive">Quiz Finished!</h1>
             <Card>
                 <CardHeader><CardTitle>Your Score</CardTitle></CardHeader>
                 <CardContent className="text-5xl font-bold text-green-600">{total}</CardContent>
-                <CardFooter className="flex justify-center text-sm text-slate-500">
+                <CardFooter className="flex justify-center text-sm text-muted-foreground">
                     Questions: {myQPoints} | Guesses: {myGPoints}
                 </CardFooter>
             </Card>
@@ -330,7 +330,7 @@ const PlayerQuestion = ({ code, me, currentBlock, currentQuestion, answers }: an
                                 <img 
                                   src={currentQuestion.image_url} 
                                   alt="Question Image" 
-                                  className="w-full max-h-[300px] object-contain mx-auto" 
+                                  className="w-full max-h-72 object-contain mx-auto"
                                 />
                             </div>
                         )}
@@ -782,8 +782,8 @@ const PlayerCreation = ({ code, participantId, existingBlock, existingQuestions,
             
             {!existingBlock && (
                 <div className="text-center pt-4 border-t">
-                    <p className="text-sm text-slate-500 mb-2">Don't want to make questions?</p>
-                    <Button variant="ghost" className="text-slate-500 hover:text-slate-800" onClick={() => setJoinedWithoutQuestions(true)}>
+                    <p className="text-sm text-muted-foreground mb-2">Don't want to make questions?</p>
+                    <Button variant="ghost" className="text-muted-foreground hover:text-foreground" onClick={() => setJoinedWithoutQuestions(true)}>
                         Join as Player Only
                     </Button>
                 </div>

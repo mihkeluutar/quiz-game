@@ -191,7 +191,7 @@ export const HostBlockEditor: React.FC<HostBlockEditorProps> = ({
   };
 
   return (
-    <div className="p-4 space-y-6 pb-20 bg-white rounded-lg border">
+    <div className="p-4 space-y-6 pb-20 bg-card rounded-lg border">
       <div className="space-y-2">
         <h2 className="text-2xl font-bold">{blockId ? 'Edit Host Block' : 'Create Host Block'}</h2>
       </div>
@@ -226,7 +226,7 @@ export const HostBlockEditor: React.FC<HostBlockEditorProps> = ({
             
             <div className="space-y-2">
               {q.image_url ? (
-                <div className="relative group rounded-lg border overflow-hidden w-full h-40 bg-slate-50">
+                <div className="relative group rounded-lg border overflow-hidden w-full h-40 bg-muted">
                   <img src={q.image_url} alt="Preview" className="w-full h-full object-contain" />
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <Button variant="secondary" size="sm" className="pointer-events-auto relative">
@@ -238,7 +238,7 @@ export const HostBlockEditor: React.FC<HostBlockEditorProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Label className={`cursor-pointer bg-slate-100 p-2 rounded hover:bg-slate-200 flex items-center gap-2 text-xs border ${uploadingIdx === i ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <Label className={`cursor-pointer bg-muted p-2 rounded hover:bg-muted/80 flex items-center gap-2 text-xs border ${uploadingIdx === i ? 'opacity-50 pointer-events-none' : ''}`}>
                     {uploadingIdx === i ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
                     {uploadingIdx === i ? 'Uploading...' : 'Add Image'}
                     <input type="file" className="hidden" accept="image/*" onChange={(e) => e.target.files?.[0] && handleUpload(i, e.target.files[0])} />
@@ -263,7 +263,7 @@ export const HostBlockEditor: React.FC<HostBlockEditorProps> = ({
             </RadioGroup>
 
             {q.type === 'mcq' && (
-              <div className="space-y-2 pl-4 border-l-2 border-slate-100">
+              <div className="space-y-2 pl-4 border-l-2 border-border">
                 <Label>Options</Label>
                 {(q.options || ['', '']).map((opt: string, optIdx: number) => {
                   const options = q.options || [''];
