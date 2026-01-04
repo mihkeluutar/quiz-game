@@ -58,8 +58,8 @@ export const HostHome = () => {
       <div className="w-full max-w-3xl space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold text-slate-900">Your quizzes</h1>
-            <p className="text-sm text-slate-500">Re-open any quiz you created.</p>
+            <h1 className="text-2xl font-semibold text-foreground">Your quizzes</h1>
+            <p className="text-sm text-muted-foreground">Re-open any quiz you created.</p>
           </div>
           <div className="flex gap-2">
             <Button onClick={() => navigate("/host/create")} className="gap-2">
@@ -78,11 +78,11 @@ export const HostHome = () => {
           </CardHeader>
           <CardContent className="space-y-2">
             {loading && quizzes.length === 0 ? (
-              <div className="text-sm text-slate-500 flex items-center gap-2">
+              <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading…
               </div>
             ) : quizzes.length === 0 ? (
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-muted-foreground">
                 No quizzes found for your account yet.
               </div>
             ) : (
@@ -90,23 +90,23 @@ export const HostHome = () => {
                 <Link
                   key={q.id}
                   to={`/host/${q.code}`}
-                  className="block rounded-lg border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+                  className="block rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors"
                 >
                   <div className="p-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="font-medium text-slate-900 truncate">{q.name}</div>
+                        <div className="font-medium text-foreground truncate">{q.name}</div>
                         <Badge variant="outline" className="text-xs">
                           {q.status}
                         </Badge>
                       </div>
-                      <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                         <span className="font-mono">{q.code}</span>
-                        <span className="text-slate-300">•</span>
+                        <span className="text-muted-foreground/50">•</span>
                         <span>{q.max_questions_per_player} questions/player</span>
                       </div>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   </div>
                 </Link>
               ))

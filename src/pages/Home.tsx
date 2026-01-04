@@ -6,7 +6,7 @@ import RizzardLogo from '../assets/rizzard-logo-purple.png';
 
 export const Home = () => {
   return (
-    <div className="fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-accent text-white">
+    <div className="fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-accent text-accent-foreground">
       <div className="flex flex-col items-center justify-center w-full max-w-md px-6 space-y-10 animate-in fade-in zoom-in duration-500">
         <div className="text-center space-y-3">
           <div className="flex items-center justify-center">
@@ -18,15 +18,16 @@ export const Home = () => {
           </div>
         </div>
         
-        <div className="flex flex-col gap-3 w-full max-w-[280px]">
-          <Button asChild size="lg" className="w-full h-12 text-base font-semibold bg-white text-accent hover:bg-red-50 border-0 shadow-lg">
+        <div className="flex flex-col gap-3 w-full max-w-72">
+          <Button asChild size="lg" className="w-full h-12 text-base font-semibold bg-background text-foreground hover:bg-muted border-0 shadow-lg">
             <Link to="/join">Join Quiz</Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="w-full h-12 text-base font-semibold bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white hover:border-white transition-all">
+          {/* STYLE_OVERRIDE: Ghost/Outline button on dark background needs custom white/transparent styling */}
+          <Button asChild variant="outline" size="lg" className="w-full h-12 text-base font-semibold bg-transparent text-primary-foreground border-primary-foreground/40 hover:bg-primary-foreground/10 hover:text-primary-foreground hover:border-primary-foreground transition-all">
             <Link to="/host">Host Quiz</Link>
           </Button>
           {/* Separator here */}
-          <div className="w-full border-t bg-white my-2" />
+          <div className="w-full border-t bg-background my-2" />
           <Button
             asChild
             variant="transparent"

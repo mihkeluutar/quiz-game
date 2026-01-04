@@ -106,7 +106,7 @@ const QuestionTextDisplay = ({ text }: { text: string }) => {
     return (
         <p 
             ref={textRef}
-            className={`${fontSizeClass} font-light leading-tight text-slate-900 mb-8 ${isMultiLine ? 'text-left' : 'text-center'}`}
+            className={`${fontSizeClass} font-light leading-tight text-foreground mb-8 ${isMultiLine ? 'text-left' : 'text-center'}`}
         >
             {text}
         </p>
@@ -131,7 +131,7 @@ export const HostDashboard = () => {
   }, [state?.currentQuestion?.id, state?.quiz.phase]);
   
   if (loading) return <div className="p-8 text-center flex justify-center"><Loader2 className="animate-spin" /> Loading quiz data...</div>;
-  if (error || !state) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
+  if (error || !state) return <div className="p-8 text-center text-destructive">Error: {error}</div>;
 
   const { quiz, participants, blocks, answers, questions, currentBlock, currentQuestion, guesses } = state;
 
@@ -204,11 +204,11 @@ export const HostDashboard = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 space-y-12 animate-in fade-in duration-500">
         <div className="text-center space-y-4">
-          <h1 className="text-6xl font-light tracking-tighter text-slate-900">{quiz.name}</h1>
-          <div className="inline-flex items-center gap-4 bg-slate-100 px-8 py-4 rounded-2xl border border-slate-200 shadow-sm">
-             <span className="text-slate-500 font-medium uppercase tracking-widest text-sm">Join Code</span>
-             <span className="text-4xl font-mono font-bold text-slate-800 tracking-wider">{quiz.code}</span>
-             <Button variant="ghost" size="icon" onClick={copyLink} className="ml-2 hover:bg-white rounded-full">
+          <h1 className="text-6xl font-light tracking-tighter text-foreground">{quiz.name}</h1>
+          <div className="inline-flex items-center gap-4 bg-muted px-8 py-4 rounded-2xl border border-border shadow-sm">
+             <span className="text-muted-foreground font-medium uppercase tracking-widest text-sm">Join Code</span>
+             <span className="text-4xl font-mono font-bold text-foreground tracking-wider">{quiz.code}</span>
+             <Button variant="ghost" size="icon" onClick={copyLink} className="ml-2 hover:bg-background rounded-full">
                  <Check className="w-4 h-4" />
              </Button>
           </div>
@@ -217,8 +217,8 @@ export const HostDashboard = () => {
         <div className="w-full max-w-4xl space-y-6">
              {/* Host Question Blocks Section */}
              <div className="space-y-4">
-               <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                 <h2 className="text-xl font-medium text-slate-600">Host Question Blocks</h2>
+               <div className="flex justify-between items-center border-b border-border pb-4">
+                 <h2 className="text-xl font-medium text-muted-foreground">Host Question Blocks</h2>
                  {!editingHostBlockId && !creatingHostBlock && (
                    <Button onClick={() => setCreatingHostBlock(true)} variant="outline" size="sm">
                      <Plus className="h-4 w-4 mr-2" />
@@ -293,7 +293,7 @@ export const HostDashboard = () => {
                        );
                      })}
                    {blocks.filter((b: any) => b.author_type === 'host' || (!b.author_participant_id && b.author_type !== 'player')).length === 0 && (
-                     <p className="text-sm text-slate-500 text-center py-8">No host blocks yet. Create one to add questions before players join.</p>
+                     <p className="text-sm text-muted-foreground text-center py-8">No host blocks yet. Create one to add questions before players join.</p>
                    )}
                  </div>
                )}
@@ -301,11 +301,11 @@ export const HostDashboard = () => {
 
              <Separator />
 
-             <div className="flex justify-between items-end border-b border-slate-200 pb-4">
-                 <h2 className="text-xl font-medium text-slate-600">
-                     Participants <span className="text-slate-400">({participants.length})</span>
+             <div className="flex justify-between items-end border-b border-border pb-4">
+                 <h2 className="text-xl font-medium text-muted-foreground">
+                     Participants <span className="text-muted-foreground/60">({participants.length})</span>
                  </h2>
-                 <div className="text-sm text-slate-400">
+                 <div className="text-sm text-muted-foreground">
                      Waiting for players to join...
                  </div>
              </div>
@@ -318,11 +318,11 @@ export const HostDashboard = () => {
                     return (
                         <div key={p.id} className={`
                             group flex items-center justify-between p-4 rounded-xl border transition-all duration-300
-                            ${isReady ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-300'}
+                            ${isReady ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-card border-border hover:border-muted-foreground'}
                         `}>
                             <div className="flex flex-col">
-                                <span className={`font-bold ${isReady ? 'text-green-800' : 'text-slate-700'}`}>{p.display_name}</span>
-                                <span className="text-xs text-slate-400">{qCount} Questions Added</span>
+                                <span className={`font-bold ${isReady ? 'text-green-800' : 'text-foreground'}`}>{p.display_name}</span>
+                                <span className="text-xs text-muted-foreground">{qCount} Questions Added</span>
                             </div>
                             {isReady && (
                                 <div className="bg-green-200 text-green-700 rounded-full p-1">
@@ -335,19 +335,19 @@ export const HostDashboard = () => {
                  
                  {/* Empty States for visuals */}
                  {Array.from({ length: Math.max(0, 4 - participants.length) }).map((_, i) => (
-                     <div key={`empty-${i}`} className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center text-slate-200 font-medium select-none">
+                     <div key={`empty-${i}`} className="border-2 border-dashed border-border rounded-xl p-4 flex items-center justify-center text-muted-foreground/50 font-medium select-none">
                          ...
                      </div>
                  ))}
              </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-slate-100 flex flex-col gap-3 items-center">
-            <div className="flex items-center gap-2 text-sm text-slate-500 w-full max-w-md">
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-background/80 backdrop-blur-sm border-t border-border flex flex-col gap-3 items-center">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground w-full max-w-md">
               <input
                 id="shuffle-blocks"
                 type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
                 checked={shuffleBlocksOnStart}
                 onChange={(e) => setShuffleBlocksOnStart(e.target.checked)}
               />
@@ -357,7 +357,7 @@ export const HostDashboard = () => {
             </div>
             <Button 
               size="lg"
-              className="w-full max-w-md h-14 text-lg shadow-xl shadow-blue-100 hover:shadow-blue-200 transition-all" 
+              className="w-full max-w-md h-14 text-lg shadow-xl shadow-primary/20 hover:shadow-primary/30 transition-all"
               onClick={() => handleAction('START_GAME', { shuffleBlocks: shuffleBlocksOnStart })}
               disabled={participants.length === 0 || !hasAnyQuestions || actionLoading}
             >
@@ -429,8 +429,8 @@ export const HostDashboard = () => {
         
         {/* Header */}
         <div className="text-center space-y-2">
-            <h1 className="text-4xl font-light tracking-tight text-slate-800">Quiz Complete</h1>
-            <p className="text-slate-500">The results are in!</p>
+            <h1 className="text-4xl font-light tracking-tight text-foreground">Quiz Complete</h1>
+            <p className="text-muted-foreground">The results are in!</p>
         </div>
 
         {/* Podium */}
@@ -438,7 +438,8 @@ export const HostDashboard = () => {
             {/* 2nd Place */}
             {top3[1] && (
                 <div className="flex flex-col items-center gap-2 w-1/4 animate-in slide-in-from-bottom-10 delay-100 duration-700">
-                    <div className="font-bold text-slate-600 text-center text-sm md:text-base truncate w-full">{top3[1].display_name}</div>
+                    <div className="font-bold text-muted-foreground text-center text-sm md:text-base truncate w-full">{top3[1].display_name}</div>
+                    {/* STYLE_OVERRIDE: Custom silver color for podium */}
                     <div className="w-full bg-slate-300 h-32 rounded-t-lg shadow-md flex items-start justify-center pt-4 relative">
                         <span className="text-4xl font-black text-white/50">2</span>
                         <Badge className="absolute -top-3 bg-slate-500 hover:bg-slate-500 text-white border-none">{top3[1].score} pts</Badge>
@@ -450,7 +451,8 @@ export const HostDashboard = () => {
             {top3[0] && (
                 <div className="flex flex-col items-center gap-2 w-1/3 z-10 animate-in slide-in-from-bottom-20 duration-700">
                     <Trophy className="w-8 h-8 text-yellow-500 mb-1" />
-                    <div className="font-bold text-slate-800 text-center text-lg md:text-xl truncate w-full">{top3[0].display_name}</div>
+                    <div className="font-bold text-foreground text-center text-lg md:text-xl truncate w-full">{top3[0].display_name}</div>
+                    {/* STYLE_OVERRIDE: Custom gold gradient for podium */}
                     <div className="w-full bg-gradient-to-b from-yellow-300 to-yellow-400 h-48 rounded-t-lg shadow-xl flex items-start justify-center pt-4 relative">
                          <span className="text-6xl font-black text-white/50">1</span>
                          <Badge className="absolute -top-3 bg-yellow-600 hover:bg-yellow-600 text-white border-none text-lg px-4 py-1">{top3[0].score} pts</Badge>
@@ -461,7 +463,8 @@ export const HostDashboard = () => {
             {/* 3rd Place */}
             {top3[2] && (
                 <div className="flex flex-col items-center gap-2 w-1/4 animate-in slide-in-from-bottom-10 delay-200 duration-700">
-                    <div className="font-bold text-slate-600 text-center text-sm md:text-base truncate w-full">{top3[2].display_name}</div>
+                    <div className="font-bold text-muted-foreground text-center text-sm md:text-base truncate w-full">{top3[2].display_name}</div>
+                    {/* STYLE_OVERRIDE: Custom bronze color for podium */}
                     <div className="w-full bg-orange-200 h-24 rounded-t-lg shadow-md flex items-start justify-center pt-4 relative">
                         <span className="text-4xl font-black text-white/50">3</span>
                         <Badge className="absolute -top-3 bg-orange-400 hover:bg-orange-400 text-white border-none">{top3[2].score} pts</Badge>
@@ -471,22 +474,22 @@ export const HostDashboard = () => {
         </div>
 
         {/* Detailed Scores List */}
-        <Card className="border-0 shadow-lg bg-white overflow-hidden">
-            <CardHeader className="bg-slate-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-slate-700">
+        <Card className="border-0 shadow-lg bg-card overflow-hidden">
+            <CardHeader className="bg-muted border-b">
+                <CardTitle className="flex items-center gap-2 text-foreground">
                     <Users className="w-5 h-5" /> Full Leaderboard
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                 {scores.map((p, idx) => (
-                    <div key={p.id} className={`flex items-center justify-between p-4 border-b last:border-0 hover:bg-slate-50 transition-colors ${idx < 3 ? 'bg-yellow-50/30' : ''}`}>
+                    <div key={p.id} className={`flex items-center justify-between p-4 border-b last:border-0 hover:bg-muted/50 transition-colors ${idx < 3 ? 'bg-yellow-50/30' : ''}`}>
                         <div className="flex items-center gap-6">
-                            <span className={`font-mono font-bold w-6 text-right ${idx < 3 ? 'text-yellow-600 text-xl' : 'text-slate-400'}`}>
+                            <span className={`font-mono font-bold w-6 text-right ${idx < 3 ? 'text-yellow-600 text-xl' : 'text-muted-foreground'}`}>
                                 {idx + 1}
                             </span>
                             <div>
-                                <p className="font-bold text-slate-800 text-lg">{p.display_name}</p>
-                                <div className="flex gap-4 text-xs text-slate-500 uppercase tracking-wider font-medium mt-1">
+                                <p className="font-bold text-foreground text-lg">{p.display_name}</p>
+                                <div className="flex gap-4 text-xs text-muted-foreground uppercase tracking-wider font-medium mt-1">
                                     <span>Questions ({p.qPoints}/{p.maxQPoints})</span>
                                     <span>•</span>
                                     <span>Authors ({p.gPoints}/{p.maxGPoints})</span>
@@ -494,8 +497,8 @@ export const HostDashboard = () => {
                             </div>
                         </div>
                         <div className="text-right">
-                             <div className="text-2xl font-black text-slate-800">{p.score}</div>
-                             <div className="text-xs text-slate-400 font-medium uppercase">Total Points</div>
+                             <div className="text-2xl font-black text-foreground">{p.score}</div>
+                             <div className="text-xs text-muted-foreground font-medium uppercase">Total Points</div>
                         </div>
                     </div>
                 ))}
@@ -743,10 +746,10 @@ export const HostDashboard = () => {
 
   if (!currentBlock && quiz.status !== 'FINISHED') {
       return (
-          <div className="flex items-center justify-center h-screen bg-slate-50">
+          <div className="flex items-center justify-center h-screen bg-background">
                <div className="text-center space-y-4">
-                   <Loader2 className="w-10 h-10 animate-spin text-slate-300 mx-auto" />
-                   <h2 className="text-xl font-medium text-slate-600">Loading Game State...</h2>
+                   <Loader2 className="w-10 h-10 animate-spin text-muted-foreground mx-auto" />
+                   <h2 className="text-xl font-medium text-muted-foreground">Loading Game State...</h2>
                </div>
           </div>
       );
