@@ -8,7 +8,22 @@ import * as kv from "./kv_store.tsx";
 const app = new Hono();
 
 app.use('*', logger(console.log));
-app.use('*', cors());
+// 🛡️ SENTINEL: High-priority security fix for overly permissive CORS.
+// The previous wildcard `cors()` config allowed any website to make requests
+// to this API, creating a major security risk (CSRF, unauthorized data access).
+// This is now restricted to known frontend origins.
+const allowedOrigins = ['http://localhost:3000'];
+const prodUrl = Deno.env.get('VITE_APP_URL');
+if (prodUrl) {
+  allowedOrigins.push(prodUrl);
+}
+
+app.use('*', cors({
+  origin: allowedOrigins,
+  allowHeaders: ['Content-Type', 'X-Player-Token'],
+  allowMethods: ['POST', 'GET', 'OPTIONS'],
+  credentials: true,
+}));
 
 // Initialize Supabase Client
 const supabase = createClient(
