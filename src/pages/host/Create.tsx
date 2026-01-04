@@ -121,6 +121,8 @@ export const HostCreate = () => {
                 onChange={(e) => {
                   const val = parseInt(e.target.value) || 1;
                   setSuggestedQuestions(val);
+                  setMinQuestions(val);
+                  setMaxQuestions(val);
                   validateInputs();
                 }} 
                 className="text-base"
