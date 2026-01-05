@@ -18,6 +18,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 
 // Image compression helper (same as in Game.tsx)
 const compressImage = (file: File): Promise<File> => {
@@ -191,9 +197,10 @@ export const HostBlockEditor: React.FC<HostBlockEditorProps> = ({
   };
 
   return (
-    <div className="p-4 space-y-6 pb-20 bg-white rounded-lg border">
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold">{blockId ? 'Edit Host Block' : 'Create Host Block'}</h2>
+    <TooltipProvider>
+      <div className="p-4 space-y-6 pb-20 bg-white rounded-lg border">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold">{blockId ? 'Edit Host Block' : 'Create Host Block'}</h2>
       </div>
       
       <div className="space-y-2">
@@ -206,15 +213,23 @@ export const HostBlockEditor: React.FC<HostBlockEditorProps> = ({
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Question {i + 1}</CardTitle>
             {questions.length > 1 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleRemoveClick(i)}
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveClick(i)}
+                    className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                    aria-label="Remove question"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Remove question</p>
+                </TooltipContent>
+              </Tooltip>
             )}
           </CardHeader>
           <CardContent className="space-y-4">
@@ -290,21 +305,29 @@ export const HostBlockEditor: React.FC<HostBlockEditorProps> = ({
                           className="w-4 h-4 text-green-600"
                         />
                         {canRemove && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              const newOpts = options.filter((_, idx) => idx !== optIdx);
-                              if (q.correct_answer === opt) {
-                                updateQuestion(i, 'correct_answer', '');
-                              }
-                              updateQuestion(i, 'options', newOpts);
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const newOpts = options.filter((_, idx) => idx !== optIdx);
+                                  if (q.correct_answer === opt) {
+                                    updateQuestion(i, 'correct_answer', '');
+                                  }
+                                  updateQuestion(i, 'options', newOpts);
+                                }}
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                aria-label="Remove option"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Remove option</p>
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     </div>
@@ -371,6 +394,7 @@ export const HostBlockEditor: React.FC<HostBlockEditorProps> = ({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </TooltipProvider>
   );
 };
 
