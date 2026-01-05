@@ -51,7 +51,7 @@ export const HostAuth = () => {
 
   return (
     <div className="flex-1 flex items-center justify-center p-4 bg-slate-50">
-      <Tabs defaultValue="login" className="w-full max-w-[400px]">
+      <Tabs defaultValue="login" className="w-full max-w-sm">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Login</TabsTrigger>
           <TabsTrigger value="signup">Sign Up</TabsTrigger>

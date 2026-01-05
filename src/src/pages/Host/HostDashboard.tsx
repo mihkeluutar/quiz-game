@@ -381,7 +381,8 @@ function PlayView({ quiz, participants, blocks, questions, answers, guesses, onN
         : [];
 
     return (
-        <Card className="min-h-[500px] flex flex-col">
+        // STYLE_OVERRIDE: min-h-[50vh] is needed to ensure the card takes up enough vertical space on large screens for a balanced layout.
+        <Card className="min-h-[50vh] flex flex-col">
             <CardHeader className="border-b">
                 <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -573,7 +574,7 @@ function FinishedView({ participants, answers, guesses, questions, blocks }: any
                                 value={selectedPlayerId}
                                 onValueChange={(value) => setSelectedPlayerId(value)}
                             >
-                                <SelectTrigger className="w-[200px] h-8 text-xs">
+                                <SelectTrigger className="w-52 h-8 text-xs">
                                     <SelectValue placeholder="All players" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -612,7 +613,7 @@ function FinishedView({ participants, answers, guesses, questions, blocks }: any
                                             <span className="text-sm font-medium text-slate-800">
                                                 {block.title}
                                             </span>
-                                            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                                            <span className="text-xs uppercase tracking-wide text-muted-foreground">
                                                 {block.questions.length} questions
                                             </span>
                                         </div>
@@ -677,7 +678,7 @@ function FinishedView({ participants, answers, guesses, questions, blocks }: any
 
                                                     playerSummary = (
                                                         <span
-                                                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badgeClass}`}
+                                                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${badgeClass}`}
                                                         >
                                                             {player?.display_name || 'Player'}: {label}
                                                         </span>
@@ -692,7 +693,7 @@ function FinishedView({ participants, answers, guesses, questions, blocks }: any
                                                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                                             <div className="space-y-1">
                                                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-[11px] font-semibold text-slate-700">
+                                                                    <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-700">
                                                                         {index + 1}
                                                                     </span>
                                                                     <span className="uppercase tracking-wide">
@@ -705,7 +706,7 @@ function FinishedView({ participants, answers, guesses, questions, blocks }: any
                                                                     {q.text}
                                                                 </p>
                                                                 {q.type === 'mcq' && (
-                                                                    <p className="text-[11px] text-muted-foreground">
+                                                                <p className="text-xs text-muted-foreground">
                                                                         Correct option:{' '}
                                                                         <span className="font-semibold">
                                                                             {q.correct_answer}
@@ -717,7 +718,7 @@ function FinishedView({ participants, answers, guesses, questions, blocks }: any
                                                                 <span className="text-xs text-muted-foreground">
                                                                     {qCorrect}/{qTotal} correct
                                                                 </span>
-                                                                <span className="text-[11px] text-muted-foreground">
+                                                                <span className="text-xs text-muted-foreground">
                                                                     {qTotal}/{participants.length}{' '}
                                                                     answered
                                                                 </span>
