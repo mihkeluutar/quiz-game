@@ -8,7 +8,34 @@ import * as kv from "./kv_store.tsx";
 const app = new Hono();
 
 app.use('*', logger(console.log));
-app.use('*', cors());
+
+// Restrict CORS to only allow the frontend origin
+app.use('*', cors({
+  origin: (origin) => {
+    // VERCEL_URL is set by Vercel for preview deployments (e.g., my-app-123.vercel.app)
+    const VERCEL_PREVIEW_URL = Deno.env.get("VERCEL_URL");
+
+    // FRONTEND_URL is for local dev or a specific production domain
+    // IMPORTANT: Set this in your environment variables for production
+    const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || 'http://localhost:3000';
+
+    const allowedOrigins = [FRONTEND_URL];
+    if (VERCEL_PREVIEW_URL) {
+      // Vercel preview URLs are dynamic, so we construct the expected origin
+      allowedOrigins.push(`https://${VERCEL_PREVIEW_URL}`);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      return origin;
+    }
+
+    // Default deny
+    return undefined;
+  },
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Player-Token'],
+}));
+
 
 // Initialize Supabase Client
 const supabase = createClient(
