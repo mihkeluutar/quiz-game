@@ -184,24 +184,24 @@ export const HostCreate = () => {
                 <AccordionTrigger>Game Options</AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-3 pt-2">
-                    <Label 
-                      htmlFor="authorGuessing" 
-                      className="cursor-pointer font-normal items-start gap-3"
-                    >
-                      <Checkbox 
-                        id="authorGuessing" 
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        id="authorGuessing"
                         checked={enableAuthorGuessing}
                         onCheckedChange={(checked) => setEnableAuthorGuessing(checked === true)}
                       />
-                      <div className="space-y-1">
+                      <Label
+                        htmlFor="authorGuessing"
+                        className="cursor-pointer font-normal"
+                      >
                         <div className="text-sm font-medium leading-none">
                           Enable Author Guessing
                         </div>
-                        <p className="text-xs text-muted-foreground font-normal leading-relaxed">
+                        <p className="text-xs text-muted-foreground font-normal leading-relaxed pt-1">
                           Players guess who created each question block during gameplay
                         </p>
-                      </div>
-                    </Label>
+                      </Label>
+                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>
