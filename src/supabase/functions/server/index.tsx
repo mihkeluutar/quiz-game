@@ -8,7 +8,26 @@ import * as kv from "./kv_store.tsx";
 const app = new Hono();
 
 app.use('*', logger(console.log));
-app.use('*', cors());
+app.use(
+  '*',
+  cors({
+    origin: (origin) => {
+      // Allow Vercel preview URLs (dynamic)
+      if (
+        (Deno.env.get("VERCEL_URL") &&
+          origin.endsWith(Deno.env.get("VERCEL_URL")!)) ||
+        origin === Deno.env.get("FRONTEND_URL")
+      ) {
+        return origin;
+      }
+      // Allow localhost for local development
+      if (origin.startsWith("http://localhost:")) {
+        return origin;
+      }
+      return Deno.env.get("FRONTEND_URL") || ""; // Default to production URL
+    },
+  })
+);
 
 // Initialize Supabase Client
 const supabase = createClient(
