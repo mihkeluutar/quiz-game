@@ -8,7 +8,35 @@ import * as kv from "./kv_store.tsx";
 const app = new Hono();
 
 app.use('*', logger(console.log));
-app.use('*', cors());
+// Stricter CORS configuration for security.
+app.use('*', cors({
+  origin: (origin) => {
+    // Define the list of allowed origins.
+    const allowedOrigins = [
+      'http://localhost:3000', // Allow local development
+    ];
+
+    // Dynamically add Vercel deployment URLs to the allowlist.
+    const vercelUrl = Deno.env.get("VERCEL_URL");
+    if (vercelUrl) {
+      allowedOrigins.push(`https://${vercelUrl}`);
+    }
+
+    // Dynamically add a custom frontend URL from environment variables.
+    const frontendUrl = Deno.env.get("FRONTEND_URL");
+    if (frontendUrl) {
+      allowedOrigins.push(frontendUrl);
+    }
+
+    // If the request's origin is in our list, allow it.
+    if (allowedOrigins.includes(origin)) {
+      return origin;
+    }
+
+    // Otherwise, deny the request.
+    return undefined;
+  },
+}));
 
 // Initialize Supabase Client
 const supabase = createClient(
