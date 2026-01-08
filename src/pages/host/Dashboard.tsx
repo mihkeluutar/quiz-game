@@ -425,7 +425,7 @@ export const HostDashboard = () => {
     const top3 = scores.slice(0, 3);
 
     return (
-      <div className="p-8 space-y-12 max-w-[1200px] mx-auto w-full animate-in fade-in duration-500">
+      <div className="p-8 space-y-12 max-w-screen-xl mx-auto w-full animate-in fade-in duration-500">
         
         {/* Header */}
         <div className="text-center space-y-2">
@@ -618,7 +618,7 @@ export const HostDashboard = () => {
                                                                                                 : 'bg-slate-50 border-slate-200'
                                                                                         }`}
                                                                                     >
-                                                                                        <span className={`font-semibold text-sm min-w-[24px] ${
+                                                                                        <span className={`font-semibold text-sm min-w-6 ${
                                                                                             isCorrect ? 'text-green-700' : 'text-slate-600'
                                                                                         }`}>
                                                                                             {String.fromCharCode(65 + idx)}.
@@ -656,7 +656,7 @@ export const HostDashboard = () => {
                                                                             <TableRow>
                                                                                 <TableHead className="max-w-[200px]">Participant</TableHead>
                                                                                 <TableHead>Answer</TableHead>
-                                                                                <TableHead className="w-[100px] text-right">Status</TableHead>
+                                                                                <TableHead className="w-24 text-right">Status</TableHead>
                                                                             </TableRow>
                                                                         </TableHeader>
                                                                         <TableBody>
@@ -882,7 +882,7 @@ export const HostDashboard = () => {
     <div className="fixed inset-0 flex flex-col bg-white">
       {/* Header with Block Navigation */}
       <div className="bg-white border-b shadow-sm z-10">
-          <div className="p-4 flex justify-between items-center border-b max-w-[1200px] mx-auto w-full">
+          <div className="p-4 flex justify-between items-center border-b max-w-screen-xl mx-auto w-full">
              <div className="flex items-center gap-2">
                  <Link to="/host" className="text-slate-500 hover:text-slate-800"><ArrowLeft className="w-4 h-4" /></Link>
                  <span className="font-mono text-sm text-slate-500">HOST VIEW</span>
@@ -910,7 +910,7 @@ export const HostDashboard = () => {
           
           {/* Scrollable Block List */}
           <div className="bg-slate-50 border-b">
-              <div className="flex overflow-x-auto p-2 gap-2 scrollbar-hide max-w-[1200px] mx-auto">
+              <div className="flex overflow-x-auto p-2 gap-2 scrollbar-hide max-w-screen-xl mx-auto">
                   {blocks.map((b, idx) => {
                       const isCurrent = b.id === currentBlock?.id;
                       const isPast = idx < currentBlockIdx;
@@ -927,7 +927,7 @@ export const HostDashboard = () => {
                           >
                               <div className="flex items-center gap-2">
                                   {isPast && <Check className="w-3 h-3" />}
-                                  <span className="whitespace-nowrap max-w-[150px] truncate">{b.title}</span>
+                                  <span className="whitespace-nowrap max-w-40 truncate">{b.title}</span>
                               </div>
                           </button>
                       );
@@ -937,7 +937,7 @@ export const HostDashboard = () => {
       </div>
 
       <div className="flex-1 overflow-auto bg-slate-50">
-        <div className="p-4 space-y-8 max-w-[1200px] mx-auto w-full pt-8">
+        <div className="p-4 space-y-8 max-w-screen-xl mx-auto w-full pt-8">
         {quiz.phase === 'QUESTION' && currentQuestion ? (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Question Card */}
@@ -981,7 +981,7 @@ export const HostDashboard = () => {
                         {currentQuestion.image_url && (
                             <div className="w-full flex justify-center mb-6">
                                 <div className="relative rounded-xl overflow-hidden shadow-lg border border-slate-100">
-                                    <img src={currentQuestion.image_url} alt="Question" className="max-h-[400px] object-contain bg-slate-50" />
+                                    <img src={currentQuestion.image_url} alt="Question" className="max-h-96 object-contain bg-slate-50" />
                                 </div>
                             </div>
                         )}
@@ -1074,7 +1074,7 @@ export const HostDashboard = () => {
                 </div>
             </div>
         ) : quiz.phase === 'GRADING' ? (
-            <div className="space-y-6 max-w-[1200px] mx-auto w-full animate-in fade-in duration-500">
+            <div className="space-y-6 max-w-screen-xl mx-auto w-full animate-in fade-in duration-500">
                 <div className="space-y-2">
                     <h2 className="text-2xl font-semibold text-slate-900">Grade open answers</h2>
                     <p className="text-sm text-slate-500">
@@ -1197,7 +1197,7 @@ export const HostDashboard = () => {
                  {quiz.phase === 'AUTHOR_REVEAL' ? (
                      <div className="relative animate-in zoom-in spin-in-3 duration-700">
                          <div className="absolute inset-0 bg-green-400 blur-3xl opacity-20 rounded-full"></div>
-                         <div className="relative bg-white p-12 rounded-3xl shadow-2xl border-4 border-green-100 flex flex-col items-center gap-4 text-center min-w-[300px]">
+                         <div className="relative bg-white p-12 rounded-3xl shadow-2xl border-4 border-green-100 flex flex-col items-center gap-4 text-center min-w-72">
                              <span className="text-slate-400 uppercase tracking-widest font-bold text-xs">The Author Is</span>
                              <h1 className="text-5xl font-black text-slate-800">
                                  {participants.find(p => p.id === currentBlock.author_participant_id)?.display_name}
@@ -1212,7 +1212,7 @@ export const HostDashboard = () => {
                         <div className="bg-slate-50 border-b border-slate-100 p-4">
                             <h3 className="text-sm uppercase text-slate-500 font-bold text-center">Live Guesses</h3>
                         </div>
-                        <div className="max-h-[300px] overflow-auto p-4 space-y-2">
+                        <div className="max-h-72 overflow-auto p-4 space-y-2">
                             {(() => {
                                 const blockGuesses = guesses.filter(g => g.block_id === currentBlock.id);
                                 const guessedIds = new Set(blockGuesses.map(g => g.guesser_participant_id));
@@ -1270,8 +1270,9 @@ export const HostDashboard = () => {
 
       {/* Persistent Controls Footer - Hidden during QUESTION phase */}
       {quiz.phase !== 'QUESTION' && (
+          /* STYLE_OVERRIDE: Top shadow not available in Tailwind defaults */
           <div className="border-t bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
-              <div className="p-4 max-w-[1200px] mx-auto flex justify-between gap-4">
+              <div className="p-4 max-w-screen-xl mx-auto flex justify-between gap-4">
                   <Button 
                     variant="outline" 
                     size="lg" 
