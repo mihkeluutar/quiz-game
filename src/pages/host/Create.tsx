@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../utils/api';
+import { Loader2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -214,7 +215,14 @@ export const HostCreate = () => {
             )}
 
             <Button type="submit" className="w-full" disabled={creating || !!validationError}>
-              {creating ? 'Creating...' : 'Create Quiz'}
+              {creating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Quiz'
+              )}
             </Button>
           </CardContent>
         </form>
