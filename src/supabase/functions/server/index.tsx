@@ -8,7 +8,10 @@ import * as kv from "./kv_store.tsx";
 const app = new Hono();
 
 app.use('*', logger(console.log));
-app.use('*', cors());
+const frontendURL = Deno.env.get("FRONTEND_URL") ?? "http://localhost:3000";
+app.use('*', cors({
+  origin: frontendURL,
+}));
 
 // Initialize Supabase Client
 const supabase = createClient(
