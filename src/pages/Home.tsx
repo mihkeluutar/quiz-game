@@ -18,7 +18,7 @@ export const Home = () => {
           </div>
         </div>
         
-        <div className="flex flex-col gap-3 w-full max-w-[280px]">
+        <div className="flex flex-col gap-3 w-full max-w-72">
           <Button asChild size="lg" className="w-full h-12 text-base font-semibold bg-white text-accent hover:bg-red-50 border-0 shadow-lg">
             <Link to="/join">Join Quiz</Link>
           </Button>
@@ -33,7 +33,7 @@ export const Home = () => {
             size="lg"
             className="w-full"
           >
-            <Link className="text-base"to="/host/auth">Login as Host</Link>
+            <Link className="text-base" to="/host/auth">Login as Host</Link>
           </Button>
         </div>
       </div>
