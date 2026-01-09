@@ -131,7 +131,7 @@ export const HostDashboard = () => {
   }, [state?.currentQuestion?.id, state?.quiz.phase]);
   
   if (loading) return <div className="p-8 text-center flex justify-center"><Loader2 className="animate-spin" /> Loading quiz data...</div>;
-  if (error || !state) return <div className="p-8 text-center text-red-500">Error: {error}</div>;
+  if (error || !state) return <div className="p-8 text-center text-destructive">Error: {error}</div>;
 
   const { quiz, participants, blocks, answers, questions, currentBlock, currentQuestion, guesses } = state;
 
@@ -204,11 +204,11 @@ export const HostDashboard = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 space-y-12 animate-in fade-in duration-500">
         <div className="text-center space-y-4">
-          <h1 className="text-6xl font-light tracking-tighter text-slate-900">{quiz.name}</h1>
-          <div className="inline-flex items-center gap-4 bg-slate-100 px-8 py-4 rounded-2xl border border-slate-200 shadow-sm">
-             <span className="text-slate-500 font-medium uppercase tracking-widest text-sm">Join Code</span>
-             <span className="text-4xl font-mono font-bold text-slate-800 tracking-wider">{quiz.code}</span>
-             <Button variant="ghost" size="icon" onClick={copyLink} className="ml-2 hover:bg-white rounded-full">
+          <h1 className="text-6xl font-light tracking-tighter text-foreground">{quiz.name}</h1>
+          <div className="inline-flex items-center gap-4 bg-muted px-8 py-4 rounded-2xl border shadow-sm">
+             <span className="text-muted-foreground font-medium uppercase tracking-widest text-sm">Join Code</span>
+             <span className="text-4xl font-mono font-bold text-foreground tracking-wider">{quiz.code}</span>
+             <Button variant="ghost" size="icon" onClick={copyLink} className="ml-2 hover:bg-background rounded-full">
                  <Check className="w-4 h-4" />
              </Button>
           </div>
@@ -217,8 +217,8 @@ export const HostDashboard = () => {
         <div className="w-full max-w-4xl space-y-6">
              {/* Host Question Blocks Section */}
              <div className="space-y-4">
-               <div className="flex justify-between items-center border-b border-slate-200 pb-4">
-                 <h2 className="text-xl font-medium text-slate-600">Host Question Blocks</h2>
+               <div className="flex justify-between items-center border-b pb-4">
+                 <h2 className="text-xl font-medium text-muted-foreground">Host Question Blocks</h2>
                  {!editingHostBlockId && !creatingHostBlock && (
                    <Button onClick={() => setCreatingHostBlock(true)} variant="outline" size="sm">
                      <Plus className="h-4 w-4 mr-2" />
@@ -293,7 +293,7 @@ export const HostDashboard = () => {
                        );
                      })}
                    {blocks.filter((b: any) => b.author_type === 'host' || (!b.author_participant_id && b.author_type !== 'player')).length === 0 && (
-                     <p className="text-sm text-slate-500 text-center py-8">No host blocks yet. Create one to add questions before players join.</p>
+                     <p className="text-sm text-muted-foreground text-center py-8">No host blocks yet. Create one to add questions before players join.</p>
                    )}
                  </div>
                )}
@@ -301,11 +301,11 @@ export const HostDashboard = () => {
 
              <Separator />
 
-             <div className="flex justify-between items-end border-b border-slate-200 pb-4">
-                 <h2 className="text-xl font-medium text-slate-600">
-                     Participants <span className="text-slate-400">({participants.length})</span>
+             <div className="flex justify-between items-end border-b pb-4">
+                 <h2 className="text-xl font-medium text-muted-foreground">
+                     Participants <span className="text-muted-foreground">({participants.length})</span>
                  </h2>
-                 <div className="text-sm text-slate-400">
+                 <div className="text-sm text-muted-foreground">
                      Waiting for players to join...
                  </div>
              </div>
@@ -318,11 +318,11 @@ export const HostDashboard = () => {
                     return (
                         <div key={p.id} className={`
                             group flex items-center justify-between p-4 rounded-xl border transition-all duration-300
-                            ${isReady ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-slate-100 hover:border-slate-300'}
+                            ${isReady ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-background border-border hover:border-muted-foreground'}
                         `}>
                             <div className="flex flex-col">
-                                <span className={`font-bold ${isReady ? 'text-green-800' : 'text-slate-700'}`}>{p.display_name}</span>
-                                <span className="text-xs text-slate-400">{qCount} Questions Added</span>
+                                <span className={`font-bold ${isReady ? 'text-green-800' : 'text-foreground'}`}>{p.display_name}</span>
+                                <span className="text-xs text-muted-foreground">{qCount} Questions Added</span>
                             </div>
                             {isReady && (
                                 <div className="bg-green-200 text-green-700 rounded-full p-1">
@@ -335,19 +335,19 @@ export const HostDashboard = () => {
                  
                  {/* Empty States for visuals */}
                  {Array.from({ length: Math.max(0, 4 - participants.length) }).map((_, i) => (
-                     <div key={`empty-${i}`} className="border-2 border-dashed border-slate-100 rounded-xl p-4 flex items-center justify-center text-slate-200 font-medium select-none">
+                     <div key={`empty-${i}`} className="border-2 border-dashed border-border rounded-xl p-4 flex items-center justify-center text-muted-foreground font-medium select-none">
                          ...
                      </div>
                  ))}
              </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-slate-100 flex flex-col gap-3 items-center">
-            <div className="flex items-center gap-2 text-sm text-slate-500 w-full max-w-md">
+        <div className="fixed bottom-0 left-0 right-0 p-6 bg-background/80 backdrop-blur-sm border-t flex flex-col gap-3 items-center">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground w-full max-w-md">
               <input
                 id="shuffle-blocks"
                 type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
                 checked={shuffleBlocksOnStart}
                 onChange={(e) => setShuffleBlocksOnStart(e.target.checked)}
               />
@@ -425,12 +425,12 @@ export const HostDashboard = () => {
     const top3 = scores.slice(0, 3);
 
     return (
-      <div className="p-8 space-y-12 max-w-[1200px] mx-auto w-full animate-in fade-in duration-500">
+      <div className="p-8 space-y-12 max-w-7xl mx-auto w-full animate-in fade-in duration-500">
         
         {/* Header */}
         <div className="text-center space-y-2">
-            <h1 className="text-4xl font-light tracking-tight text-slate-800">Quiz Complete</h1>
-            <p className="text-slate-500">The results are in!</p>
+            <h1 className="text-4xl font-light tracking-tight text-foreground">Quiz Complete</h1>
+            <p className="text-muted-foreground">The results are in!</p>
         </div>
 
         {/* Podium */}
@@ -438,7 +438,7 @@ export const HostDashboard = () => {
             {/* 2nd Place */}
             {top3[1] && (
                 <div className="flex flex-col items-center gap-2 w-1/4 animate-in slide-in-from-bottom-10 delay-100 duration-700">
-                    <div className="font-bold text-slate-600 text-center text-sm md:text-base truncate w-full">{top3[1].display_name}</div>
+                    <div className="font-bold text-muted-foreground text-center text-sm md:text-base truncate w-full">{top3[1].display_name}</div>
                     <div className="w-full bg-slate-300 h-32 rounded-t-lg shadow-md flex items-start justify-center pt-4 relative">
                         <span className="text-4xl font-black text-white/50">2</span>
                         <Badge className="absolute -top-3 bg-slate-500 hover:bg-slate-500 text-white border-none">{top3[1].score} pts</Badge>
@@ -450,7 +450,7 @@ export const HostDashboard = () => {
             {top3[0] && (
                 <div className="flex flex-col items-center gap-2 w-1/3 z-10 animate-in slide-in-from-bottom-20 duration-700">
                     <Trophy className="w-8 h-8 text-yellow-500 mb-1" />
-                    <div className="font-bold text-slate-800 text-center text-lg md:text-xl truncate w-full">{top3[0].display_name}</div>
+                    <div className="font-bold text-foreground text-center text-lg md:text-xl truncate w-full">{top3[0].display_name}</div>
                     <div className="w-full bg-gradient-to-b from-yellow-300 to-yellow-400 h-48 rounded-t-lg shadow-xl flex items-start justify-center pt-4 relative">
                          <span className="text-6xl font-black text-white/50">1</span>
                          <Badge className="absolute -top-3 bg-yellow-600 hover:bg-yellow-600 text-white border-none text-lg px-4 py-1">{top3[0].score} pts</Badge>
@@ -461,7 +461,7 @@ export const HostDashboard = () => {
             {/* 3rd Place */}
             {top3[2] && (
                 <div className="flex flex-col items-center gap-2 w-1/4 animate-in slide-in-from-bottom-10 delay-200 duration-700">
-                    <div className="font-bold text-slate-600 text-center text-sm md:text-base truncate w-full">{top3[2].display_name}</div>
+                    <div className="font-bold text-muted-foreground text-center text-sm md:text-base truncate w-full">{top3[2].display_name}</div>
                     <div className="w-full bg-orange-200 h-24 rounded-t-lg shadow-md flex items-start justify-center pt-4 relative">
                         <span className="text-4xl font-black text-white/50">3</span>
                         <Badge className="absolute -top-3 bg-orange-400 hover:bg-orange-400 text-white border-none">{top3[2].score} pts</Badge>
@@ -471,22 +471,22 @@ export const HostDashboard = () => {
         </div>
 
         {/* Detailed Scores List */}
-        <Card className="border-0 shadow-lg bg-white overflow-hidden">
-            <CardHeader className="bg-slate-50 border-b">
-                <CardTitle className="flex items-center gap-2 text-slate-700">
+        <Card className="border-0 shadow-lg bg-card overflow-hidden">
+            <CardHeader className="bg-muted/50 border-b">
+                <CardTitle className="flex items-center gap-2 text-foreground">
                     <Users className="w-5 h-5" /> Full Leaderboard
                 </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
                 {scores.map((p, idx) => (
-                    <div key={p.id} className={`flex items-center justify-between p-4 border-b last:border-0 hover:bg-slate-50 transition-colors ${idx < 3 ? 'bg-yellow-50/30' : ''}`}>
+                    <div key={p.id} className={`flex items-center justify-between p-4 border-b last:border-0 hover:bg-muted/50 transition-colors ${idx < 3 ? 'bg-yellow-50/30' : ''}`}>
                         <div className="flex items-center gap-6">
-                            <span className={`font-mono font-bold w-6 text-right ${idx < 3 ? 'text-yellow-600 text-xl' : 'text-slate-400'}`}>
+                            <span className={`font-mono font-bold w-6 text-right ${idx < 3 ? 'text-yellow-600 text-xl' : 'text-muted-foreground'}`}>
                                 {idx + 1}
                             </span>
                             <div>
-                                <p className="font-bold text-slate-800 text-lg">{p.display_name}</p>
-                                <div className="flex gap-4 text-xs text-slate-500 uppercase tracking-wider font-medium mt-1">
+                                <p className="font-bold text-foreground text-lg">{p.display_name}</p>
+                                <div className="flex gap-4 text-xs text-muted-foreground uppercase tracking-wider font-medium mt-1">
                                     <span>Questions ({p.qPoints}/{p.maxQPoints})</span>
                                     <span>•</span>
                                     <span>Authors ({p.gPoints}/{p.maxGPoints})</span>
@@ -494,8 +494,8 @@ export const HostDashboard = () => {
                             </div>
                         </div>
                         <div className="text-right">
-                             <div className="text-2xl font-black text-slate-800">{p.score}</div>
-                             <div className="text-xs text-slate-400 font-medium uppercase">Total Points</div>
+                             <div className="text-2xl font-black text-foreground">{p.score}</div>
+                             <div className="text-xs text-muted-foreground font-medium uppercase">Total Points</div>
                         </div>
                     </div>
                 ))}
@@ -615,16 +615,16 @@ export const HostDashboard = () => {
                                                                                         className={`flex items-start gap-2 p-2 rounded-md border ${
                                                                                             isCorrect 
                                                                                                 ? 'bg-green-50 border-green-200' 
-                                                                                                : 'bg-slate-50 border-slate-200'
+                                                                                                : 'bg-muted/50 border-border'
                                                                                         }`}
                                                                                     >
-                                                                                        <span className={`font-semibold text-sm min-w-[24px] ${
-                                                                                            isCorrect ? 'text-green-700' : 'text-slate-600'
+                                                                                        <span className={`font-semibold text-sm min-w-6 ${
+                                                                                            isCorrect ? 'text-green-700' : 'text-muted-foreground'
                                                                                         }`}>
                                                                                             {String.fromCharCode(65 + idx)}.
                                                                                         </span>
                                                                                         <span className={`text-sm flex-1 break-words ${
-                                                                                            isCorrect ? 'text-green-800 font-medium' : 'text-slate-700'
+                                                                                            isCorrect ? 'text-green-800 font-medium' : 'text-foreground'
                                                                                         }`}>
                                                                                             {opt}
                                                                                         </span>
@@ -654,9 +654,9 @@ export const HostDashboard = () => {
                                                                     <Table>
                                                                         <TableHeader>
                                                                             <TableRow>
-                                                                                <TableHead className="max-w-[200px]">Participant</TableHead>
+                                                                                <TableHead className="w-52">Participant</TableHead>
                                                                                 <TableHead>Answer</TableHead>
-                                                                                <TableHead className="w-[100px] text-right">Status</TableHead>
+                                                                                <TableHead className="w-24 text-right">Status</TableHead>
                                                                             </TableRow>
                                                                         </TableHeader>
                                                                         <TableBody>
@@ -669,7 +669,7 @@ export const HostDashboard = () => {
                                                                                 
                                                                                 return (
                                                                                     <TableRow key={participant.id} className={isLast ? "border-b-0" : ""}>
-                                                                                        <TableCell className="max-w-[200px]">
+                                                                                        <TableCell className="w-52">
                                                                                             <div className="flex items-center gap-2 min-w-0">
                                                                                                 <span className="font-medium truncate">{participant.display_name}</span>
                                                                                                 {isAuthor && (
@@ -745,8 +745,8 @@ export const HostDashboard = () => {
       return (
           <div className="flex items-center justify-center h-screen bg-slate-50">
                <div className="text-center space-y-4">
-                   <Loader2 className="w-10 h-10 animate-spin text-slate-300 mx-auto" />
-                   <h2 className="text-xl font-medium text-slate-600">Loading Game State...</h2>
+                   <Loader2 className="w-10 h-10 animate-spin text-muted-foreground mx-auto" />
+                   <h2 className="text-xl font-medium text-muted-foreground">Loading Game State...</h2>
                </div>
           </div>
       );
@@ -879,13 +879,13 @@ export const HostDashboard = () => {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-white">
+    <div className="fixed inset-0 flex flex-col bg-background">
       {/* Header with Block Navigation */}
-      <div className="bg-white border-b shadow-sm z-10">
-          <div className="p-4 flex justify-between items-center border-b max-w-[1200px] mx-auto w-full">
+      <div className="bg-background border-b shadow-sm z-10">
+          <div className="p-4 flex justify-between items-center border-b max-w-7xl mx-auto w-full">
              <div className="flex items-center gap-2">
-                 <Link to="/host" className="text-slate-500 hover:text-slate-800"><ArrowLeft className="w-4 h-4" /></Link>
-                 <span className="font-mono text-sm text-slate-500">HOST VIEW</span>
+                 <Link to="/host" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="w-4 h-4" /></Link>
+                 <span className="font-mono text-sm text-muted-foreground">HOST VIEW</span>
                  <Badge variant="outline" className="ml-2">{phaseLabel}</Badge>
              </div>
              <div className="flex gap-2">
@@ -909,8 +909,8 @@ export const HostDashboard = () => {
           </div>
           
           {/* Scrollable Block List */}
-          <div className="bg-slate-50 border-b">
-              <div className="flex overflow-x-auto p-2 gap-2 scrollbar-hide max-w-[1200px] mx-auto">
+          <div className="bg-muted/50 border-b">
+              <div className="flex overflow-x-auto p-2 gap-2 scrollbar-hide max-w-7xl mx-auto">
                   {blocks.map((b, idx) => {
                       const isCurrent = b.id === currentBlock?.id;
                       const isPast = idx < currentBlockIdx;
@@ -921,13 +921,13 @@ export const HostDashboard = () => {
                             disabled={actionLoading}
                             className={`
                                 flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-all border
-                                ${isCurrent ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200'}
+                                ${isCurrent ? 'bg-primary text-primary-foreground border-primary shadow-md' : 'bg-background hover:bg-muted text-foreground border-border'}
                                 ${isPast ? 'opacity-60' : ''}
                             `}
                           >
                               <div className="flex items-center gap-2">
                                   {isPast && <Check className="w-3 h-3" />}
-                                  <span className="whitespace-nowrap max-w-[150px] truncate">{b.title}</span>
+                                  <span className="whitespace-nowrap w-36 truncate">{b.title}</span>
                               </div>
                           </button>
                       );
@@ -936,15 +936,15 @@ export const HostDashboard = () => {
           </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-slate-50">
-        <div className="p-4 space-y-8 max-w-[1200px] mx-auto w-full pt-8">
+      <div className="flex-1 overflow-auto bg-muted/30">
+        <div className="p-4 space-y-8 max-w-7xl mx-auto w-full pt-8">
         {quiz.phase === 'QUESTION' && currentQuestion ? (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* Question Card */}
-                <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-                    <div className="bg-slate-50/50 border-b border-slate-100 p-6 flex justify-between items-center">
+                <div className="bg-card rounded-2xl shadow-xl shadow-slate-200/50 border border-border overflow-hidden">
+                    <div className="bg-muted/50 border-b border-border p-6 flex justify-between items-center">
                          <div className="flex items-center gap-3 flex-1">
-                             <span className="text-slate-700 text-base font-semibold">
+                             <span className="text-foreground text-base font-semibold">
                                  Question {currentQIdx + 1} of {currentBlock?.title || 'Block'}
                              </span>
                          </div>
@@ -954,7 +954,7 @@ export const HostDashboard = () => {
                                  size="sm"
                                  onClick={goBack}
                                  disabled={actionLoading || (currentQIdx === 0)}
-                                 className="bg-white hover:bg-slate-50"
+                                 className="bg-background hover:bg-muted"
                              >
                                  <ArrowLeft className="w-4 h-4" />
                              </Button>
@@ -963,7 +963,7 @@ export const HostDashboard = () => {
                                  size="sm"
                                  onClick={() => goNext()}
                                  disabled={actionLoading}
-                                 className="bg-white hover:bg-slate-50"
+                                 className="bg-background hover:bg-muted"
                              >
                                  <ArrowRight className="w-4 h-4" />
                              </Button>
@@ -980,8 +980,8 @@ export const HostDashboard = () => {
                         
                         {currentQuestion.image_url && (
                             <div className="w-full flex justify-center mb-6">
-                                <div className="relative rounded-xl overflow-hidden shadow-lg border border-slate-100">
-                                    <img src={currentQuestion.image_url} alt="Question" className="max-h-[400px] object-contain bg-slate-50" />
+                                <div className="relative rounded-xl overflow-hidden shadow-lg border border-border">
+                                    <img src={currentQuestion.image_url} alt="Question" className="max-h-96 object-contain bg-muted/50" />
                                 </div>
                             </div>
                         )}
@@ -992,15 +992,15 @@ export const HostDashboard = () => {
                 <div className="space-y-4">
                     <div className="flex justify-between items-center px-2">
                         <div className="flex items-center gap-4">
-                          <h3 className="font-medium text-slate-500 flex items-center gap-2">
+                          <h3 className="font-medium text-muted-foreground flex items-center gap-2">
                               <Users className="w-4 h-4" /> 
                               <span>{answers.filter(a => a.question_id === currentQuestion.id).length}</span>
-                              <span className="text-slate-300">/</span>
+                              <span className="text-muted-foreground/50">/</span>
                               <span>{participants.length}</span>
-                              <span className="text-slate-400 text-sm ml-1">Answered</span>
+                              <span className="text-muted-foreground text-sm ml-1">Answered</span>
                           </h3>
                           {!isRevealed && (
-                              <Button size="sm" onClick={() => setIsRevealed(true)} variant="outline" className="bg-white hover:bg-slate-50 text-slate-600 border-slate-200">
+                              <Button size="sm" onClick={() => setIsRevealed(true)} variant="outline" className="bg-background hover:bg-muted text-muted-foreground border-border">
                                   <Eye className="mr-2 w-4 h-4" /> Reveal Answers
                               </Button>
                           )}
@@ -1017,7 +1017,7 @@ export const HostDashboard = () => {
                                         p-4 rounded-xl border flex items-center justify-between transition-all duration-300
                                         ${hasAnswered 
                                             ? 'bg-green-500 border-green-600 text-white shadow-md transform scale-105' 
-                                            : 'bg-white border-slate-100 text-slate-400'}
+                                            : 'bg-background border-border text-muted-foreground'}
                                     `}>
                                         <span className={`text-sm font-medium ${hasAnswered ? 'text-white' : ''}`}>{p.display_name}</span>
                                         {hasAnswered && <Check className="w-4 h-4 text-white" />}
@@ -1030,9 +1030,9 @@ export const HostDashboard = () => {
                             {answers.filter(a => a.question_id === currentQuestion.id).map(ans => {
                                 const p = participants.find(part => part.id === ans.participant_id);
                                 return (
-                                    <div key={ans.id} className="bg-white p-4 border border-slate-200 rounded-xl shadow-sm flex flex-col gap-2 relative overflow-hidden group hover:border-slate-300 transition-colors">
+                                    <div key={ans.id} className="bg-background p-4 border border-border rounded-xl shadow-sm flex flex-col gap-2 relative overflow-hidden group hover:border-muted-foreground transition-colors">
                                         <div className="flex justify-between items-start">
-                                            <span className="font-bold text-slate-700">{p?.display_name}</span>
+                                            <span className="font-bold text-foreground">{p?.display_name}</span>
                                             {currentQuestion.type === 'mcq' && (
                                                 <Badge variant={ans.is_correct ? "default" : "destructive"} className={ans.is_correct ? "bg-green-600 hover:bg-green-700" : ""}>
                                                     {ans.is_correct ? 'Correct' : 'Wrong'}
@@ -1040,12 +1040,12 @@ export const HostDashboard = () => {
                                             )}
                                         </div>
                                         
-                                        <div className="text-slate-600 font-medium text-lg leading-snug break-words">
+                                        <div className="text-foreground font-medium text-lg leading-snug break-words">
                                             {ans.answer_text}
                                         </div>
 
                                         {currentQuestion.type === 'open' && (
-                                            <div className="flex gap-2 mt-2 pt-2 border-t border-slate-100">
+                                            <div className="flex gap-2 mt-2 pt-2 border-t border-border">
                                                 <Button 
                                                     size="sm" 
                                                     variant={ans.is_correct ? "default" : "outline"}
@@ -1074,10 +1074,10 @@ export const HostDashboard = () => {
                 </div>
             </div>
         ) : quiz.phase === 'GRADING' ? (
-            <div className="space-y-6 max-w-[1200px] mx-auto w-full animate-in fade-in duration-500">
+            <div className="space-y-6 max-w-7xl mx-auto w-full animate-in fade-in duration-500">
                 <div className="space-y-2">
-                    <h2 className="text-2xl font-semibold text-slate-900">Grade open answers</h2>
-                    <p className="text-sm text-slate-500">
+                    <h2 className="text-2xl font-semibold text-foreground">Grade open answers</h2>
+                    <p className="text-sm text-muted-foreground">
                         Review free-text answers without seeing who wrote them. Select grades, then submit them all at once.
                     </p>
                 </div>
@@ -1101,7 +1101,7 @@ export const HostDashboard = () => {
                     });
                     if (grouped.length === 0) {
                         return (
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-sm text-slate-500">
+                            <div className="bg-muted/50 border border-border rounded-xl p-6 text-sm text-muted-foreground">
                                 No open-answer responses to grade.
                             </div>
                         );
@@ -1112,14 +1112,14 @@ export const HostDashboard = () => {
                               {grouped.map((group, idx) => (
                                   <Card key={group.question.id}>
                                       <CardHeader className="space-y-2">
-                                          <CardTitle className="text-base text-slate-800 flex items-center gap-2">
-                                              <span className="inline-flex items-center justify-center rounded-full bg-slate-100 text-slate-700 text-xs px-2 py-0.5">
+                                          <CardTitle className="text-base text-foreground flex items-center gap-2">
+                                              <span className="inline-flex items-center justify-center rounded-full bg-muted text-foreground text-xs px-2 py-0.5">
                                                   Q{idx + 1}
                                               </span>
                                               {group.question.text}
                                           </CardTitle>
-                                          <p className="text-xs text-slate-500">
-                                              Expected answer: <span className="font-semibold text-slate-800">{group.question.correct_answer}</span>
+                                          <p className="text-xs text-muted-foreground">
+                                              Expected answer: <span className="font-semibold text-foreground">{group.question.correct_answer}</span>
                                           </p>
                                       </CardHeader>
                                       <CardContent className="space-y-3">
@@ -1135,16 +1135,16 @@ export const HostDashboard = () => {
                                               return (
                                                   <div
                                                     key={ans.id}
-                                                    className="border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-4 bg-white"
+                                                    className="border border-border rounded-lg p-3 flex items-center justify-between gap-4 bg-background"
                                                   >
                                                       <div className="min-w-0">
-                                                          <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                                                          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
                                                               <span>Answer {aIdx + 1}</span>
-                                                              <span className={status === 'Correct' ? 'text-green-600 font-semibold' : status === 'Wrong' ? 'text-red-500 font-semibold' : 'text-slate-400'}>
+                                                              <span className={status === 'Correct' ? 'text-green-600 font-semibold' : status === 'Wrong' ? 'text-red-500 font-semibold' : 'text-muted-foreground'}>
                                                                   {status}
                                                               </span>
                                                           </div>
-                                                          <div className="text-slate-700 text-sm font-medium break-words">
+                                                          <div className="text-foreground text-sm font-medium break-words">
                                                               {ans.answer_text}
                                                           </div>
                                                       </div>
@@ -1185,21 +1185,21 @@ export const HostDashboard = () => {
                 })()}
             </div>
         ) : (quiz.phase === 'AUTHOR_GUESS' || quiz.phase === 'AUTHOR_REVEAL') && currentBlock && (currentBlock.author_type !== 'host' && currentBlock.author_participant_id) ? (
-            <div className="flex flex-col items-center justify-center min-h-[500px] space-y-12 animate-in fade-in duration-700">
+            <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-12 animate-in fade-in duration-700">
                  <div className="text-center space-y-4">
-                    <span className="text-slate-400 uppercase tracking-widest font-semibold text-sm">Block Author Mystery</span>
-                    <h2 className="text-5xl md:text-6xl font-black text-slate-800 tracking-tight leading-tight">
+                    <span className="text-muted-foreground uppercase tracking-widest font-semibold text-sm">Block Author Mystery</span>
+                    <h2 className="text-5xl md:text-6xl font-black text-foreground tracking-tight leading-tight">
                         Who created <br/>
-                        <span className="text-blue-600">"{currentBlock.title}"</span>?
+                        <span className="text-primary">"{currentBlock.title}"</span>?
                     </h2>
                  </div>
 
                  {quiz.phase === 'AUTHOR_REVEAL' ? (
                      <div className="relative animate-in zoom-in spin-in-3 duration-700">
                          <div className="absolute inset-0 bg-green-400 blur-3xl opacity-20 rounded-full"></div>
-                         <div className="relative bg-white p-12 rounded-3xl shadow-2xl border-4 border-green-100 flex flex-col items-center gap-4 text-center min-w-[300px]">
-                             <span className="text-slate-400 uppercase tracking-widest font-bold text-xs">The Author Is</span>
-                             <h1 className="text-5xl font-black text-slate-800">
+                         <div className="relative bg-background p-12 rounded-3xl shadow-2xl border-4 border-green-100 flex flex-col items-center gap-4 text-center min-w-80">
+                             <span className="text-muted-foreground uppercase tracking-widest font-bold text-xs">The Author Is</span>
+                             <h1 className="text-5xl font-black text-foreground">
                                  {participants.find(p => p.id === currentBlock.author_participant_id)?.display_name}
                              </h1>
                              <div className="bg-green-100 text-green-800 px-4 py-1 rounded-full text-sm font-bold mt-2">
@@ -1208,11 +1208,11 @@ export const HostDashboard = () => {
                          </div>
                      </div>
                  ) : (
-                     <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-                        <div className="bg-slate-50 border-b border-slate-100 p-4">
-                            <h3 className="text-sm uppercase text-slate-500 font-bold text-center">Live Guesses</h3>
+                     <div className="w-full max-w-md bg-card rounded-2xl shadow-xl shadow-slate-200/50 border border-border overflow-hidden">
+                        <div className="bg-muted/50 border-b border-border p-4">
+                            <h3 className="text-sm uppercase text-muted-foreground font-bold text-center">Live Guesses</h3>
                         </div>
-                        <div className="max-h-[300px] overflow-auto p-4 space-y-2">
+                        <div className="max-h-80 overflow-auto p-4 space-y-2">
                             {(() => {
                                 const blockGuesses = guesses.filter(g => g.block_id === currentBlock.id);
                                 const guessedIds = new Set(blockGuesses.map(g => g.guesser_participant_id));
@@ -1237,13 +1237,13 @@ export const HostDashboard = () => {
                                             ${
                                               hasGuessed
                                                 ? 'bg-green-50 border-green-100'
-                                                : 'bg-slate-50 border-slate-200'
+                                                : 'bg-muted/50 border-border'
                                             }`}
                                         >
-                                            <span className="font-medium text-slate-700">{p.display_name}</span>
+                                            <span className="font-medium text-foreground">{p.display_name}</span>
                                             <span
                                               className={`italic text-xs ${
-                                                hasGuessed ? 'text-green-700' : 'text-slate-400'
+                                                hasGuessed ? 'text-green-700' : 'text-muted-foreground'
                                               }`}
                                             >
                                                 {hasGuessed ? 'has guessed' : 'has not guessed yet'}
@@ -1253,7 +1253,7 @@ export const HostDashboard = () => {
                                 });
                             })()}
                             {participants.length === 0 && (
-                                <div className="text-slate-400 text-center text-sm italic py-8 flex flex-col items-center gap-2">
+                                <div className="text-muted-foreground text-center text-sm italic py-8 flex flex-col items-center gap-2">
                                     <Loader2 className="w-4 h-4 animate-spin opacity-50" />
                                     Waiting for players...
                                 </div>
@@ -1270,8 +1270,8 @@ export const HostDashboard = () => {
 
       {/* Persistent Controls Footer - Hidden during QUESTION phase */}
       {quiz.phase !== 'QUESTION' && (
-          <div className="border-t bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
-              <div className="p-4 max-w-[1200px] mx-auto flex justify-between gap-4">
+          <div className="border-t bg-background shadow-lg z-20">
+              <div className="p-4 max-w-7xl mx-auto flex justify-between gap-4">
                   <Button 
                     variant="outline" 
                     size="lg" 
