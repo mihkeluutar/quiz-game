@@ -18,8 +18,8 @@ export const Home = () => {
           </div>
         </div>
         
-        <div className="flex flex-col gap-3 w-full max-w-[280px]">
-          <Button asChild size="lg" className="w-full h-12 text-base font-semibold bg-white text-accent hover:bg-red-50 border-0 shadow-lg">
+        <div className="flex flex-col gap-3 w-full max-w-72">
+          <Button asChild size="lg" className="w-full h-12 text-base font-semibold bg-white text-accent hover:bg-destructive/10 border-0 shadow-lg">
             <Link to="/join">Join Quiz</Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="w-full h-12 text-base font-semibold bg-transparent text-white border-white/40 hover:bg-white/10 hover:text-white hover:border-white transition-all">

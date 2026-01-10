@@ -29,7 +29,7 @@ export const PlayerGame = () => {
   const { state, loading, error } = useQuizState(code || '', token);
   
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>;
-  if (error || !state) return <div className="p-8 text-center text-red-500">{error || 'Game not found'}</div>;
+  if (error || !state) return <div className="p-8 text-center text-destructive">{error || 'Game not found'}</div>;
 
   const { quiz, participants = [], blocks = [], currentBlock, currentQuestion, answers = [], guesses = [] } = state;
   const me = participants?.find(p => p.player_token === token);
@@ -96,9 +96,9 @@ export const PlayerGame = () => {
        return (
           <div className="flex items-center justify-center h-screen p-6 text-center">
               <div className="space-y-4">
-                  <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-500" />
+                  <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary" />
                   <h2 className="text-xl font-semibold">Loading current round...</h2>
-                  <p className="text-slate-500">Syncing with host...</p>
+                  <p className="text-muted-foreground">Syncing with host...</p>
               </div>
           </div>
       );
@@ -107,9 +107,9 @@ export const PlayerGame = () => {
   return (
       <div className="flex items-center justify-center h-screen p-6 text-center">
           <div className="space-y-4">
-              <Loader2 className="w-12 h-12 animate-spin mx-auto text-red-500" />
+              <Loader2 className="w-12 h-12 animate-spin mx-auto text-destructive" />
               <h2 className="text-xl font-semibold">Waiting for host...</h2>
-              <p className="text-slate-500">Get ready for the next question!</p>
+              <p className="text-muted-foreground">Get ready for the next question!</p>
           </div>
       </div>
   );
@@ -124,11 +124,11 @@ const PlayerFinished = ({ me, answers, guesses }: any) => {
 
     return (
         <div className="p-6 space-y-8 text-center">
-            <h1 className="text-3xl font-bold text-red-600">Quiz Finished!</h1>
+            <h1 className="text-3xl font-bold text-destructive">Quiz Finished!</h1>
             <Card>
                 <CardHeader><CardTitle>Your Score</CardTitle></CardHeader>
                 <CardContent className="text-5xl font-bold text-green-600">{total}</CardContent>
-                <CardFooter className="flex justify-center text-sm text-slate-500">
+                <CardFooter className="flex justify-center text-sm text-muted-foreground">
                     Questions: {myQPoints} | Guesses: {myGPoints}
                 </CardFooter>
             </Card>
@@ -168,9 +168,9 @@ const PlayerAuthorGuess = ({ code, me, quiz, currentBlock, participants, guesses
                         const isCorrect = quiz.phase === 'AUTHOR_REVEAL' && p.id === realAuthor?.id;
                         const isWrong = quiz.phase === 'AUTHOR_REVEAL' && isSelected && !isCorrect;
 
-                        let btnClass = isSelected ? 'bg-blue-600 ring-2 ring-blue-300' : '';
+                        let btnClass = isSelected ? 'bg-primary ring-2 ring-primary/50' : '';
                         if (isCorrect) btnClass = 'bg-green-600 ring-2 ring-green-300 hover:bg-green-700';
-                        if (isWrong) btnClass = 'bg-red-600 ring-2 ring-red-300 hover:bg-red-700';
+                        if (isWrong) btnClass = 'bg-destructive ring-2 ring-destructive/50 hover:bg-destructive/90';
 
                         return (
                             <Button 
@@ -330,7 +330,7 @@ const PlayerQuestion = ({ code, me, currentBlock, currentQuestion, answers }: an
                                 <img 
                                   src={currentQuestion.image_url} 
                                   alt="Question Image" 
-                                  className="w-full max-h-[300px] object-contain mx-auto" 
+                                  className="w-full max-h-72 object-contain mx-auto"
                                 />
                             </div>
                         )}
