@@ -9,6 +9,7 @@ import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../../components/ui/accordion';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const HostCreate = () => {
@@ -214,7 +215,14 @@ export const HostCreate = () => {
             )}
 
             <Button type="submit" className="w-full" disabled={creating || !!validationError}>
-              {creating ? 'Creating...' : 'Create Quiz'}
+              {creating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Quiz'
+              )}
             </Button>
           </CardContent>
         </form>
