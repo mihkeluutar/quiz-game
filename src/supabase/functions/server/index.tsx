@@ -2,13 +2,20 @@
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
+import { secureHeaders } from "npm:hono/secure-headers";
 import { createClient } from "jsr:@supabase/supabase-js@2.49.8";
 import * as kv from "./kv_store.tsx";
 
 const app = new Hono();
 
 app.use('*', logger(console.log));
-app.use('*', cors());
+app.use(
+  '*',
+  cors({
+    origin: Deno.env.get("FRONTEND_URL") ?? "http://localhost:3000",
+  }),
+);
+app.use('*', secureHeaders());
 
 // Initialize Supabase Client
 const supabase = createClient(
